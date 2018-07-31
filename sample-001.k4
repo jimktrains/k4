@@ -25,9 +25,12 @@ type Packet:
 is_error <= false
 
 packet <= Packet:
- address <= (Address)0x0000
- command_type <= CommandType.Ping
- command <= 0x00000
+  address      <= (Address)0x0000
+  command_type <= CommandType.Ping
+  command      <= 0x00000
+
+# By being of type boolean and in the same global scope as is_error, these
+# could be packed into the same byte
 has_new_packet <= true;
 
 task check_packet:
