@@ -1,0 +1,50 @@
+type Address := byte[2]
+
+enum CommandType := nibble:
+  Ping := 0x0
+  BlinkLED := 0x1
+
+enum PingOrPong := bit:
+  Ping := 0b0
+  Pong := 0b1
+
+type PingCommand:
+  PingOrPong ping_or_pong
+  bit[3] _
+  Address respond_to
+
+type BlinkLEDCommand:
+  nibble type
+  nibble led_address
+
+type Packet:
+  Address address
+  CommandType command_type
+  nibble[5] command
+
+is_error <= false
+
+packet <= Packet:
+ address <= (Address)0x0000
+ command_type <= CommandType.Ping
+ command <= 0x00000
+has_new_packet <= true;
+
+task check_packet:
+  setup:
+    # Since these are never allocated here, they cannot be allocated later.
+    PingCommand ping_command
+    BlinkLEDCommand blink_led
+  body:
+    if has_new_packet:
+      match packet.command_type:
+        case CommandType.Ping:
+          # @= says to use in place, <= says to copy to a new location for this
+          # variable. @= will also error if the thing being used is used later
+          ping_command @= (PingCommand)packet.command
+          ping_command.ping_or_pong == PingOrPong.Ping # True
+        case CommandType.BlinkLED:
+          blink_led @= (BlinkLEDCommand)packet.command
+        else:
+          is_error <= true
+      has_new_packet <= false

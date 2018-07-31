@@ -1,0 +1,114 @@
+require UART;
+require I2C;
+
+# Somewhere in the UART defintion:
+
+# class UART{X}:
+#   const byte FE  := 4
+#   const byte UPE := 3
+#   const byte DOR := 2
+#
+#   type Error := int8
+#
+#   # Address types should be used sparingly, but are needed when dealing with
+#   # status registers. It's analoous to an byte, but the compiler needs to
+#   # dereference it
+#   address status = UCSR{X}A
+#
+#   # &! is to check if a bit is set
+#   macro frame_error         := status &! FE
+#   macro parity_error        := status &! UPE
+#   macro data_over_run_error := status &! DOR
+#
+#   macro has_error := Error(0) !== error_number
+#   macro error_number := Error(status &! (FE, UPE, DOR))
+#
+#   address data = UDR{X}
+
+# type Error := byte
+# type OK{T} := T
+# type Result{T} := Error + OK{T}
+
+type Address := byte[2]
+
+type Command := byte[4]
+
+type Packet:
+  Address{} address
+  Command{} command
+
+type Ring_Buffer{Type, Size}:
+  buffer  := Type[Size]
+  writeAt := LessThan{Size}(0)
+  readAt  := LessThan{Size}(0)
+  new_overwritten := int16{0}
+  written := int16(0)
+
+  def insert(Type to_insert) => void:
+    if this.written != 0 && (this.write == this.read || this.new_overwritten != 0):
+      this.new_overwritten++
+    this.buffer[this.write] <= to_insert
+    this.write++
+
+  def read() => Result{Type}:
+    if this.write == 0:
+      return Error(1)
+    tmp = this.buffer[this.read]
+    this.read++
+    return tmp
+
+type Rx2Tx_Buffer := Ring_Buffer{Packet, 20}
+
+rx2tx <= Rx2Tx_Buffer
+
+USART{0}.initialize(USART{0}.baud_9600, USART{0}.parity_even, USART.frame_8)
+
+@budget 20_cycle
+interrupt USART{0}.RX:
+  setup:
+    rx_buffer := Packet
+    i         := LessThan{sizeof(rx_buffer)}(0)
+  body:
+    loop:
+      iterate i:
+        yield
+        if USART{0}.has_error:
+          yield
+        rx_buffer@i <= USART{0}.data 
+      if rx2tx.written != 0 && (rx2tx.write == rx2tx.read || rx2tx.new_overwritten != 0):
+        rx2tx_new_overwritten++
+      rx2tx_buffer[rx2tx_write] <= rx2tx_buffer
+      rx2tx_write++
+
+task check_dropped_packets:
+  setup:
+    pass
+  body:
+    transaction:
+      if rx2tx_new_overwritten > 0:
+        I2C.write_transaction(lcd_address):
+          for c in "Dropped Packets! ":
+            I2C.write(c)
+          for c in formatNumber(5, rx2tx_new_overwritten):
+            I2C.write(c)
+        rx2tx_new_overwritten = 0
+
+@budget 30_cycles
+task check_UART_error:
+  setup:
+    pass
+  body:
+    if UART{0}.frame_error:
+        I2C.write_transaction(lcd_address):
+          for c in "UART0 Frame Error!":
+            I2C.write(c)
+    if UART{0}.parity_error:
+        I2C.write_transaction(lcd_address):
+          for c in "UART0 Parity Error!":
+            I2C.write(c)
+    if UART{0}.data_over_run_error:
+        I2C.write_transaction(lcd_address):
+          for c in "UART0 DOR Error!":
+            I2C.write(c)
+
+
