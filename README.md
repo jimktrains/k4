@@ -3,7 +3,7 @@
 **__THIS IS A WORK IN PROGRESS. IT IS STILL BEING PLANNED. NO COMPILER EXISTS
 YET__**
 
-Experimental/Toy strongly-typed language targetting microcontrollers.
+Experimental/Toy strongly-typed language targeting microcontrollers.
 
 # General Thoughts
 
@@ -11,10 +11,10 @@ My main target is the AVR, but there shouldn't be anything that prevents
 it from being used elsewhere.
 
 There will be no concept of a "reference" in the C-way. There will be an
-`address` type, but it is effectivly defined at compiler time and constant,
+`address` type, but it is effectively defined at compiler time and constant,
 cannot be mutated, and the address cannot be used in an expression as any
-reference to the variable will immediatly dereference. The concept of "taking
-the address of a varaible" is non-existant.
+reference to the variable will immediately dereference. The concept of "taking
+the address of a variable" is non-existent.
 
 Everything is statically dispatched. Objects are not tagged in memory with
 their type.
@@ -121,7 +121,7 @@ will fail as it could require up to 129 cycles (if UDR0 was, say, 255)
 
 ## Transactions
 
-Transactions are code where interupts are turned off.
+Transactions are code where interrupts are turned off.
 
     def hello():
       transaction:
@@ -141,9 +141,9 @@ would give something like
 Tasks are functions with two parts, `setup` and `body`. In `setup`, all
 allocations must happen. All `setup`s for all tasks will be run before any
 `body` is executed. The `body` of each task will be executed in a loop.
-Execution of `body` will start at the begining unless it had `yeild`ed.
+Execution of `body` will start at the beginning unless it had `yeild`ed.
 
 ### Interuppts
 
-Iterupts are similar to tasks, but not executed in a loop, but when they
-the interuppt happens.
+Interrupts are similar to tasks, but not executed in a loop, but when they
+the interrupt happens.
