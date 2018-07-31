@@ -53,9 +53,9 @@ be able to be known at compile time.
 Individual bytes can be set or manipulated via the `@` operator:
 
     ab <= AB (allocates (at compile time) 3 bytes in the heap)
-    p@0 = 0x01 # Sets the first byte to 0x01
-    p@1 = 0x02 # Sets the second byte to 0x02
-    p@2 = 0x03 # Sets the third byte to 0x03
+    p@0 <= 0x01 # Sets the first byte to 0x01
+    p@1 <= 0x02 # Sets the second byte to 0x02
+    p@2 <= 0x03 # Sets the third byte to 0x03
 
     # ab.a == 1
     # ab.b == 515
