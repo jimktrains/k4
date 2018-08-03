@@ -30,7 +30,18 @@ to do automatically.)
 
 `:=` denotes a definition
 
-`{}` denotes a type parameter and is something known at compile time.
+`{}` denotes a type parameter and is something known at compile time and will
+require a new version of the function
+
+`<>` denotes a type parameter and is something known at compile time and will
+not require a new version of the function (but could).
+
+For instance, `{}` is used to determine the type of a parameters and variables
+and `<>` could be the length of an array or the number of iterations a function
+requires. Length of an array will need to be `{}` for allocation, but for a
+function that is looping over the array, `<>` will work.
+
+(I'm not entirly sold on the above concept yet.)
 
 ## `require`
 
@@ -55,13 +66,19 @@ Default, always available types are
 * boolean
 * int8
 * int16
+* Array (fixed-size)
 * LessThan{value}
-* byte lists (only valid for iteration)
 
 Note that floating point types are not always available.  Support would
 require a `require floating_point` assertion.
 
 ### No Dynamic Allocation
+
+There is no way to dynamically allocate memory.
+
+
+### Byte <=> Type Isomorphism
+
 All types must map back to some size of bytes at compile time, which will be
 allocated on the heap if more than 2 bytes.
 
@@ -84,7 +101,6 @@ allocated on the heap if more than 2 bytes.
 As such, the maximum amount of memory needed for any function call should
 be able to be known at compile time.
 
-### Byte <=> Type Isomorphism
 
 Individual bytes can be set or manipulated via the `@` operator:
 
@@ -225,6 +241,7 @@ button, and opens when the sensor is triggered and it's closing.
       | Opening          | No_Input            | Opening          |
 
       | Opening_Finished | -                   | Open             |
+
       | Opening_Started  | -                   | Opening          |
 
       | Closed           | Button              | Opening_Started  |
@@ -240,6 +257,7 @@ button, and opens when the sensor is triggered and it's closing.
       | Closing          | No_Input            | Closing          |
 
       | Closing_Finished | -                   | Closed           |
+
       | Closing_Started  | -                   | Closing          |
 
       | Error            | Button              | Opening          |
@@ -303,3 +321,9 @@ However, we can add a default match:
 
         else:
           pass
+
+## Macros
+
+I'm still working out exactly how macros should behave and work. I think I'm
+going to play around with Common Lisp and Rust macros. Some initial thoughts
+can be seen in sample-002.

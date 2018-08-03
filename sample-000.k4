@@ -1,0 +1,28 @@
+record Person
+  byte[2] id
+  int8    position_in_line
+
+def random(byte8 state) => byte8 state, byte output:
+  # x^7 + x + 1
+  const byte poly = 0b10000011
+	state = (state >> 1) ^ poly;
+  ouput = state
+
+def bubble_sort(mut Slice<size>{T} array):
+  T temp
+  for i in size-1..1:
+    for j in i-1..0:
+      if array[i].position_in_line > array[j].position_in_line:
+        temp <= array[i]
+        array[i] <= array[j]
+        array[j] <= temp
+      
+
+Array<10>{Person} queue
+
+byte state = 0x01
+
+for person in queue:
+  output, state = random(state)  
+  person.position_in_line = (int8)output
+

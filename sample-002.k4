@@ -1,0 +1,89 @@
+enum ThingToDo \ byte:
+  Blink   := 0x00
+  Beep    := 0x01
+  Saunter := 0x02
+
+RingBuffer<20>{ThingToDo} buffer
+
+macro yield_on_Empty(RingBuffer{T} buffer, AST{T} popped):
+    setup:
+      int8 counter
+    body:
+      match buffer.pop():
+        case RingBuffer.Empty:
+          yield
+        case RingBuffer.Value(value):
+          $ast(value)
+
+macro yield_on_Full<int8 maxCounter>(RingBuffer{T} buffer, T thing, AST{T} pushed, AST{T} timeout):
+    setup:
+      int8 counter
+    body:
+      for counter in 0..maxCounter:
+        match buffer.push(thing):
+          case RingBuffer.Full:
+            yield
+          case RingBuffer.Pushed:
+            $pushed(thing)
+            break
+      else:
+        $error(thing)
+        
+
+task DoThing:
+  setup:
+    pass
+  body:
+    # Macro Version
+    yield_on_Empty buffer:
+      popped x:
+        match x:
+          case ThingToDo.Blink:
+            pass
+          case ThingToDo.Beep:
+            pass
+          case ThingToDo.Saunter:
+            pass
+      
+    # Full Version
+    match buffer.pop():
+      case RingBuffer.Empty:
+        yield
+      case RingBuffer.Value(x):
+        match x:
+          case ThingToDo.Blink:
+            pass
+          case ThingToDo.Beep:
+            pass
+          case ThingToDo.Saunter:
+            pass
+
+task MakeStuffUpToDo:
+  setup:
+    int8 counter <= 0
+  body:
+    thing <= getRandomThing()
+
+    # Macro Version
+    yield_on_Full<5> buffer thing:
+      pushed thing2ButReallyTheSame:
+        doSomethingHappy(thing2ButReallyTheSame)
+      timeout thing2ButReallyTheSame
+        doSomethingSad(thing2ButReallyTheSame)
+        
+
+    # Full Version
+    counter <= 0
+    loop:
+      match buffer.push(thing):
+        case RingBuffer.Full:
+          counter++
+          if counter > 5:
+            error <= true
+            break
+          else:
+            yield
+        case RingBuffer.Pushed:
+          doSomethingHappy(thing)
+    if error:
+      doSomethingSad(thing)
