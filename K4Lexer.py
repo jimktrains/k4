@@ -23,6 +23,8 @@ tokens = [
         'DEDENT',
         'NUMBER',
         'WS',
+        'AT',
+        'DOLLAR',
         ]
 
 t_PLUS    = r'\+'
@@ -37,20 +39,31 @@ t_OPEN_ANGLE_BRACKET = r'<'
 t_CLOSE_ANGLE_BRACKET = r'>'
 t_OPEN_BRACE = r"{"
 t_CLOSE_BRACE = r"}"
+t_AT = r"@"
+t_DOLLAR = r"\$"
 
 reserved = {
-        'if' : 'IF',
-        'then' : 'THEN',
-        'else' : 'ELSE',
-        'while' : 'WHILE',
-        'wend' : 'WEND',
-        'record' : 'RECORD',
-        'int8': 'INT8',
-        'byte' : 'BYTE',
-        '@budget' : 'BUDGET',
-        'module' : 'MODULE', 
-        'require' : 'REQUIRE',
-        }
+    'if' : 'IF',
+    'elif' : 'ELIF',
+    'else' : 'ELSE',
+    'while' : 'WHILE',
+    'record' : 'RECORD',
+    'int8': 'INT8',
+    'byte' : 'BYTE',
+    'budget' : 'BUDGET',
+    'module' : 'MODULE',
+    'require' : 'REQUIRE',
+    'nibble': 'NIBBLE',
+    'match': 'MATCH',
+    'case': 'CASE',
+    'loop': 'LOOP',
+    'enum': 'ENUM',
+    'func': 'FUNC',
+    'interrupt': 'INTERRUPT',
+    'bit': 'BIT',
+    'boolean': 'BOOLEAN',
+    'pass': 'PASS',
+}
 
 tokens += list(reserved.values())
 
@@ -99,7 +112,6 @@ def t_newline(t):
     t.lexer.indent = indent
     t.value = indent
 
-
     if original_indent == indent:
         t.type = "NEWLINE"
     elif original_indent > indent:
@@ -108,7 +120,6 @@ def t_newline(t):
         t.type = 'INDENT'
 
     return t
-
 
 def t_WS(t):
     r'[\t\ ]+'
