@@ -25,6 +25,8 @@ tokens = [
         'WS',
         'AT',
         'DOLLAR',
+        'LEFT_SHIFT',
+        'RIGHT_SHIFT',
         ]
 
 t_PLUS    = r'\+'
@@ -41,6 +43,8 @@ t_OPEN_BRACE = r"{"
 t_CLOSE_BRACE = r"}"
 t_AT = r"@"
 t_DOLLAR = r"\$"
+t_LEFT_SHIFT = r"<<"
+t_RIGHT_SHIFT = r">>"
 
 reserved = {
     'if' : 'IF',

@@ -20,5 +20,4 @@ print()
 
 k4_parser = K4Parser()
 ast = k4_parser.parse(test)
-
 print(ast)
