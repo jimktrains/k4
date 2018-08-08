@@ -15,6 +15,7 @@ tokens = [
         'COMMENT',
         'COLON',
         'ASSIGN',
+        'DEFINE',
         'OPEN_ANGLE_BRACKET',
         'CLOSE_ANGLE_BRACKET',
         'OPEN_BRACE',
@@ -27,6 +28,12 @@ tokens = [
         'DOLLAR',
         'LEFT_SHIFT',
         'RIGHT_SHIFT',
+        'BITWISE_AND',
+        'BITWISE_OR',
+        'BITWISE_XOR',
+        'LOGICAL_AND',
+        'LOGICAL_OR',
+        'LOGICAL_XOR',
         ]
 
 t_PLUS    = r'\+'
@@ -37,14 +44,21 @@ t_OPEN_SQUARE_BRACKET = r'\['
 t_CLOSE_SQUARE_BRACKET = r'\]'
 t_COLON = r':'
 t_ASSIGN = r'<='
+t_DEFINE = r':='
 t_OPEN_ANGLE_BRACKET = r'<'
 t_CLOSE_ANGLE_BRACKET = r'>'
 t_OPEN_BRACE = r"{"
 t_CLOSE_BRACE = r"}"
 t_AT = r"@"
 t_DOLLAR = r"\$"
-t_LEFT_SHIFT = r"<<"
-t_RIGHT_SHIFT = r">>"
+#t_LEFT_SHIFT = r"<<"
+#t_RIGHT_SHIFT = r">>"
+#t_BITWISE_AND = r"&"
+#t_BITWISE_OR = r"|"
+#t_BITWISE_XOR = r"^"
+#t_LOGICAL_AND = r"&&"
+#t_LOGICAL_OR = r"||"
+#t_LOGICAL_XOR = r"^^"
 
 reserved = {
     'if' : 'IF',
@@ -67,6 +81,7 @@ reserved = {
     'bit': 'BIT',
     'boolean': 'BOOLEAN',
     'pass': 'PASS',
+    'bits': 'BITS',
 }
 
 tokens += list(reserved.values())
