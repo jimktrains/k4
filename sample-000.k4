@@ -48,12 +48,28 @@ def bubble_partial_sort(Slice{T} [@rest,x,y]):
   if rest.length != 0:
     bubble_partial_sort([rest,x])
 
+# Since slice extracts act like references, assigning to them
+# will change the value in the array.
+def double(Slice<size>{T} [x,@xs], Slice<size>{T} [y,@ys]):
+  y <= x + x
+  if xs.length != 0 and ys.length != 0:
+    double(xs, ys)
+
+# Reduce the array by extracting the first element, adding it to the
+# carry. If there is nothing left to recurse on, we return the
+# carry.
+def sum(Slice{T} [x,@xs], T carry):
+  carry += x
+  if xs.length != 0:
+    return sum(xs, carry)
+  return carry
+
 Array<10>{Person} queue
 
 byte state = 0x01
 
 for person in queue:
-  output, state = random(state)  
-  person.position_in_line = (int8)output
+  output, state <- random(state)
+  person.position_in_line <- (int8)output
 
 bubble_sort(queue)

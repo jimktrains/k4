@@ -43,6 +43,31 @@ function that is looping over the array, `<>` will work.
 
 (I'm not entirly sold on the above concept yet.)
 
+## References
+
+Variables that are the type of a record live a dual existance. They are
+treated as references by most of the code, e.g. they are not copied
+byte-by-byte when being passed to a function, but assignment and
+swapping will work at the byte. For instance,
+
+    record Point:
+      int8 x
+      int8 y
+
+    a <- Point { x <- 1, y <- 2 }
+    b <- Point { x <- 3, y <- 4 }
+
+    # Does not create copies of a or b
+    # Modifying a or b in `add` will cause a or b to be changed
+    # out here too.
+    add(a, b)
+
+    # Copies the contents of b into the memory allocated for a
+    a <- b
+
+    # Does an in-place swap of the contents of a and b
+    swap a b
+
 ## `require`
 
 Libraries can be loaded via `require`.  If the target platform has no library,
@@ -60,7 +85,6 @@ types are passed-by-reference
 
 Default, always available types are
 
-* bit
 * nibble
 * byte
 * boolean
@@ -68,14 +92,16 @@ Default, always available types are
 * int16
 * Array (fixed-size)
 * LessThan{value}
+* GreaterThan{value}
 
 Note that floating point types are not always available.  Support would
 require a `require floating_point` assertion.
 
 ### No Dynamic Allocation
 
-There is no way to dynamically allocate memory.
-
+There is no way to dynamically allocate memory. All variables must be of
+a known size at compile time and the compiler will figure out how to
+best allocate memory then.
 
 ### Byte <=> Type Isomorphism
 
@@ -111,6 +137,8 @@ Individual bytes can be set or manipulated via the `@` operator:
 
     # ab.a == 1
     # ab.b == 515
+
+## `LessThan` and `GreaterThan`
 
 The value on the right of the `@` _must_ be less than the size of the object.
 If a literal, this is checked at compile-time. If not, it must be of type
@@ -324,9 +352,9 @@ However, we can add a default match:
 
 ## Macros
 
-I'm still working out exactly how macros should behave and work. I think I'm
-going to play around with Common Lisp and Rust macros. Some initial thoughts
-can be seen in sample-002.
+I'm still working out exactly how macros should behave and work. I think
+I'm going to play around with Common Lisp, Rust, and maybe Nim macros.
+Some initial thoughts can be seen in sample-002.
 
 ## Pattern Parameter Matching
 
@@ -363,11 +391,57 @@ but this is not:
 
 You'll need to have an array allocated and assigned to.
 
+Some example usage:
+
+    # So, what we're doing here for bubble short, is to take an array, extracted 
+    # the last element, partially sort the whole array, including the extracted
+    # element. We then do this again, without the extracted element. If we
+    # have no elements in the rest of the slice, then we terminate.
+    def bubble_sort(Slice{T} [@rest,x]):
+      if rest.length != 0:
+        bubble_partial_sort([rest, x])
+        bubble_sort(rest)
+
+    # This function partially sort the passed in slice by extracting the last
+    # two elements, swapping them if nessecary. Swap happens in-place, so
+    # we can then partially sort the remainer of the slice by passing in
+    # the rest prepended to the first extracted value. (Values can only be
+    # concatented in the order extracted: rest;y is a compiler error below.
+    def bubble_partial_sort(Slice{T} [@rest,x,y]):
+      if x > y:
+        swap x y
+      if rest.length != 0:
+        bubble_partial_sort([rest,x])
+
+    # Since slice extracts act like references, assigning to them
+    # will change the value in the array.
+    def double(Slice{T} [x,@xs], Slice{T} [y,@ys]):
+      y <= x + x
+      if xs.length != 0 and ys.length != 0:
+        double(xs, ys)
+
+    # Reduce the array by extracting the first element, adding it to the 
+    # carry. If there is nothing left to recurse on, we return the
+    # carry.
+    def sum(Slice{T} [x,@xs], T carry):
+      carry += x
+      if xs.length != 0:
+        return sum(xs, carry)
+      return carry
+
+Since these can be tail-call optimized, the compiler will be able to
+produce decent code for this without requiring lots of stack space.
+
+Part of the rationale for this is avoiding a looping construct. I'm just
+not a fan of loops and find they're easy to get wrong. If you don't use
+array indecies, you can't have off-by-one errors.
+
 ### Records
 
 A similar thing can be done for records. A record can be followed by an
 expression that will extract fields (and potentially not all fields) into
-function-local variables.
+function-local variables. I'm still debating this one, but I think it's
+neat.
 
     record Vector:
       int8 x
