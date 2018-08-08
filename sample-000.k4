@@ -16,20 +16,20 @@ def random(byte8 state) => byte8 state, byte output:
 # may be prefixed with an @ symbol, symbolizing where the the rest of the
 # slice being passed in, that is the elements not being extracted. 
 # For example: [1,2,3,4] passed into:
-#   x;@rest         => x=1, rest=[2,3,4]
-#   @rest;x         => x=4, rest=[1,2,3]
-#   x;y;@rest       => x=1, y=2, rest=[3,4]
-#   x;@rest;y       => x=1, y=4, rest=[2,3]
-#   w;x;y;z;@rest   => w=1, x=2, y=3, z=4, rest=[]
-#   w;x;y;z;a;@rest => compiler error
+#   [x,@rest]         => x=1, rest=[2,3,4]
+#   [@rest,x]         => x=4, rest=[1,2,3]
+#   [x,y,@rest]       => x=1, y=2, rest=[3,4]
+#   [x,@rest,y]       => x=1, y=4, rest=[2,3]
+#   [w,x,y,z,@rest]   => w=1, x=2, y=3, z=4, rest=[]
+#   [w,x,y,z,a,@rest] => compiler error
 #
 # So, what we're doing here for bubble short, is to take an array, extracted 
 # the last element, partially sort the whole array, including the extracted
 # element. We then do this again, without the extracted element. If we
 # have no elements in the rest of the slice, then we terminate.
-def bubble_sort(Slice{T} @rest;x):
+def bubble_sort(Slice{T} [@rest,x]):
   if rest.length != 0:
-    bubble_partial_sort(rest;x)
+    bubble_partial_sort([rest, x])
     bubble_sort(rest)
 
 # This function partially sort the passed in slice by extracting the last
@@ -37,11 +37,11 @@ def bubble_sort(Slice{T} @rest;x):
 # we can then partially sort the remainer of the slice by passing in
 # the rest prepended to the first extracted value. (Values can only be
 # concatented in the order extracted: rest;y is a compiler error below.
-def bubble_partial_sort(Slice{T} @rest;x;y):
+def bubble_partial_sort(Slice{T} [@rest,x,y]):
   if x > y:
     swap x y
   if rest.length != 0:
-    bubble_partial_sort(rest;x)
+    bubble_partial_sort([rest,x])
 
 Array<10>{Person} queue
 
