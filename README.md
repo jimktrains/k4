@@ -327,3 +327,52 @@ However, we can add a default match:
 I'm still working out exactly how macros should behave and work. I think I'm
 going to play around with Common Lisp and Rust macros. Some initial thoughts
 can be seen in sample-002.
+
+## Pattern Parameter Matching
+
+### Arrays/Slices
+
+`Array`s are what can be declared as variables. `Slice`s are what is used
+for function parameters. Slice is explicetly calling out that this parameter
+is an array, but not an array that you declared? I'm working on it.
+
+The syntax for a Slice parameter can include that multiple items being 
+extracted from the Slice being passed in; one of the extracted parameters
+may be prefixed with an @ symbol, symbolizing where the the rest of the
+slice being passed in, that is the elements not being extracted. 
+For example: `[1,2,3,4]` passed into:
+
+    [x,@rest]         => x=1, rest=[2,3,4]
+    [@rest,x]         => x=4, rest=[1,2,3]
+    [x,y,@rest]       => x=1, y=2, rest=[3,4]
+    [x,@rest,y]       => x=1, y=4, rest=[2,3]
+    [w,x,y,z,@rest]   => w=1, x=2, y=3, z=4, rest=[]
+    [w,x,y,z,a,@rest] => compiler error
+
+However, you cannot create a new slice from non-adjacent extracts. This is
+allowed:
+
+    func a(Slice{T} [a,b,@c]):
+      a([a,b])
+      a([b,@c])
+
+but this is not:
+
+    func a(Slice{T} [a,b,@c]):
+      a([a,@c])
+    
+
+### Records
+
+A similar thing can be done for records. A record can be followed by an
+expression that will extract fields (and potentially not all fields) into
+function-local variables.
+
+    record Vector:
+      int8 x
+      int8 y
+
+    func add(Vector {x x1, y y1}, Vector {x x2, y y2}) => Vector:
+      return Vector { x <- x1 + x2, y <- y1 + y2 }
+
+      
