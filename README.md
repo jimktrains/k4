@@ -360,7 +360,8 @@ but this is not:
 
     func a(Slice{T} [a,b,@c]):
       a([a,@c])
-    
+
+You'll need to have an array allocated and assigned to.
 
 ### Records
 
@@ -374,5 +375,3 @@ function-local variables.
 
     func add(Vector {x x1, y y1}, Vector {x x2, y y2}) => Vector:
       return Vector { x <- x1 + x2, y <- y1 + y2 }
-
-      
