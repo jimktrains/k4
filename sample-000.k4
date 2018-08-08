@@ -2,8 +2,13 @@ record Person
   byte[2] id
   int8    position_in_line
 
-op >(Person a, Person b):
-  return array[i].position_in_line > array[j].position_in_line
+op >(Person {position_in_line a}, Person {position_in_line b}):
+  return a > b
+
+# op >(Person a, Person b):
+#   int8 x <- a.position_in_line
+#   int8 y <- b.position_in_line
+#   return a > y
 
 def random(byte8 state) => byte8 state, byte output:
   # x^7 + x + 1
