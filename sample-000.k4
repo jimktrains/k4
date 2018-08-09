@@ -6,9 +6,7 @@ op >(Person {position_in_line a}, Person {position_in_line b}):
   return a > b
 
 # op >(Person a, Person b):
-#   int8 x <- a.position_in_line
-#   int8 y <- b.position_in_line
-#   return a > y
+#   return a.position_in_line > b.position_in_line
 
 def random(byte8 state) => byte8 state, byte output:
   # x^7 + x + 1
@@ -48,8 +46,7 @@ def bubble_sort{T := Comparable, S := Slice{T}}(mut S array):
 def bubble_partial_sort{T := Comparable, S := Slice{T}}(mut S array):
   match array:
     [@rest, x, y]:
-      if x > y:
-        swap x y
+      if x > y -> swap x y
       bubble_partial_sort([rest,x])
     [@rest, x] -> pass
     [] -> pass
