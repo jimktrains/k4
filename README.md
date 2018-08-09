@@ -358,7 +358,7 @@ Some initial thoughts can be seen in sample-002.
 
 ## Pattern Parameter Matching
 
-### Arrays/Slices
+### Array/Slice
 
 `Array`s are what can be declared as variables. `Slice`s are what is used
 for function parameters. Slice is explicetly calling out that this parameter
@@ -391,43 +391,71 @@ but this is not:
 
 You'll need to have an array allocated and assigned to.
 
+This may also be used in a `match`. However `match`es need to be exhustive,
+for instance the following won't compile:
+
+    func a(Slice{T} b):
+      match b:
+        [a,b,@c]:
+          a([a,b])
+          a([b,@c])
+
+however, this will:
+
+    func a(Slice{T} b):
+      match b:
+        [a,b,@c]:
+          a([a,b])
+          a([b,@c])
+        [a, @c]:
+          a([a])
+          a([@c)
+        [] -> pass
+
 Some example usage:
 
     # So, what we're doing here for bubble short, is to take an array, extracted 
     # the last element, partially sort the whole array, including the extracted
     # element. We then do this again, without the extracted element. If we
     # have no elements in the rest of the slice, then we terminate.
-    def bubble_sort(Slice{T} [@rest,x]):
-      if rest.length != 0:
-        bubble_partial_sort([rest, x])
-        bubble_sort(rest)
+    def bubble_sort{T := Comparable, S := Slice{T}}(mut S array):
+        match array:
+          [@rest, x]:
+            bubble_partial_sort([rest, x])
+            bubble_sort(rest)
+          [] -> pass
 
     # This function partially sort the passed in slice by extracting the last
     # two elements, swapping them if nessecary. Swap happens in-place, so
     # we can then partially sort the remainer of the slice by passing in
     # the rest prepended to the first extracted value. (Values can only be
     # concatented in the order extracted: rest;y is a compiler error below.
-    def bubble_partial_sort(Slice{T} [@rest,x,y]):
-      if x > y:
-        swap x y
-      if rest.length != 0:
-        bubble_partial_sort([rest,x])
+    def bubble_partial_sort{T := Comparable, S := Slice{T}}(mut S array):
+      match array:
+        [@rest, x, y]:
+          if x > y:
+            swap x y
+          bubble_partial_sort([rest,x])
+        [@rest, x] -> pass
+        [] -> pass
 
     # Since slice extracts act like references, assigning to them
     # will change the value in the array.
-    def double(Slice{T} [x,@xs], Slice{T} [y,@ys]):
-      y <= x + x
-      if xs.length != 0 and ys.length != 0:
-        double(xs, ys)
+    def void double{T := Addable, A := Slice<size_a>{T}, B := Slice<size_b>{T}; size_b >= size_a}(A a, mut B b):
+      match a, b:
+        [x, @xs], [y, @ys]:
+          y <= x + x
+          double(xs, ys)
+        [], [y, @ys] -> pass
+        [], [] -> pass
 
     # Reduce the array by extracting the first element, adding it to the 
     # carry. If there is nothing left to recurse on, we return the
     # carry.
-    def sum(Slice{T} [x,@xs], T carry):
-      carry += x
-      if xs.length != 0:
-        return sum(xs, carry)
-      return carry
+    def T sum{T := Addable, S := Slice{T}}(S array, T carry):
+      return match array:
+        [x,@xs] -> return sum(xs, carry + x)
+        [] -> return carry
 
 Since these can be tail-call optimized, the compiler will be able to
 produce decent code for this without requiring lots of stack space.
@@ -449,3 +477,46 @@ neat.
 
     func add(Vector {x x1, y y1}, Vector {x x2, y y2}) => Vector:
       return Vector { x <- x1 + x2, y <- y1 + y2 }
+
+## Traits
+
+Traits are a way of defining composable functionality. `record`s are
+simple structures in memory and contain no function definitions on them.
+Traits allow one to define functionality on `record`s, similar to how
+it's done in rust. This is not inhereitence in the normal
+object-oriented way -- there are no parents or base classes; the
+closest description is that traits are similar to interfaces, if
+intefaces can't have a parent. 
+
+To define a trait, you list the methods it has, and then you can implement
+if for a type.
+
+  record Point:
+    int8 x
+    int8 y
+
+  trait Addable{S,T}:
+    op +(S a, T b)
+    op -(S a, T b)
+
+  trait Comparable{T}:
+    op <(T a, T b)
+
+  impl Addable{S := Point, T := Point}:
+    op +(S a, T b):
+      return Point {x <- a.x + b.x, y <- a.y + b.y}
+    op -(S a, T b):
+      return Point {x <- a.x - b.x, y <- a.y - b.y}
+
+  # This isn't the best way to compare points...but it's a way?
+  impl Comparable{Point}:
+    op <(Point a, Point b):
+      return a.x < b.x || a.y < b.y
+
+To constrain traits on a function parameter, use `;`:
+
+  func do_stuff{T := Addable;Comparable}(T a, T b):
+    pass
+
+notice how the constraints are defined before the parameter list, not
+inside.
