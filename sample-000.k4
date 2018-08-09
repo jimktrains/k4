@@ -21,6 +21,7 @@ def random(byte8 state) => byte8 state, byte output:
 # may be prefixed with an @ symbol, symbolizing where the the rest of the
 # slice being passed in, that is the elements not being extracted. 
 # For example: [1,2,3,4] passed into:
+#
 #   [x,@rest]         => x=1, rest=[2,3,4]
 #   [@rest,x]         => x=4, rest=[1,2,3]
 #   [x,y,@rest]       => x=1, y=2, rest=[3,4]
@@ -32,37 +33,44 @@ def random(byte8 state) => byte8 state, byte output:
 # the last element, partially sort the whole array, including the extracted
 # element. We then do this again, without the extracted element. If we
 # have no elements in the rest of the slice, then we terminate.
-def bubble_sort(Slice{T} [@rest,x]):
-  if rest.length != 0:
-    bubble_partial_sort([rest, x])
-    bubble_sort(rest)
+def bubble_sort{T := Comparable, S := Slice{T}}(mut S array):
+    match array:
+      [@rest, x]:
+        bubble_partial_sort([rest, x])
+        bubble_sort(rest)
+      [] -> pass
 
 # This function partially sort the passed in slice by extracting the last
 # two elements, swapping them if nessecary. Swap happens in-place, so
 # we can then partially sort the remainer of the slice by passing in
 # the rest prepended to the first extracted value. (Values can only be
 # concatented in the order extracted: rest;y is a compiler error below.
-def bubble_partial_sort(Slice{T} [@rest,x,y]):
-  if x > y:
-    swap x y
-  if rest.length != 0:
-    bubble_partial_sort([rest,x])
+def bubble_partial_sort{T := Comparable, S := Slice{T}}(mut S array):
+  match array:
+    [@rest, x, y]:
+      if x > y:
+        swap x y
+      bubble_partial_sort([rest,x])
+    [@rest, x] -> pass
+    [] -> pass
 
 # Since slice extracts act like references, assigning to them
 # will change the value in the array.
-def double(Slice<size>{T} [x,@xs], Slice<size>{T} [y,@ys]):
-  y <= x + x
-  if xs.length != 0 and ys.length != 0:
-    double(xs, ys)
+def void double{T := Addable, A := Slice<size_a>{T}, B := Slice<size_b>{T}; size_b >= size_a}(A a, mut B b):
+  match a, b:
+    [x, @xs], [y, @ys]:
+      y <- x + x
+      double(xs, ys)
+    [], [y, @ys] -> pass
+    [], [] -> pass
 
 # Reduce the array by extracting the first element, adding it to the
 # carry. If there is nothing left to recurse on, we return the
 # carry.
-def sum(Slice{T} [x,@xs], T carry):
-  carry += x
-  if xs.length != 0:
-    return sum(xs, carry)
-  return carry
+def T sum{T := Addable, S := Slice{T}}(S array, T carry):
+  return match array:
+    [x,@xs] -> return sum(xs, carry + x)
+    [] -> return carry
 
 Array<10>{Person} queue
 
