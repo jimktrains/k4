@@ -26,7 +26,7 @@ to do automatically.)
 
 `match`es will be exhaustive.
 
-`<=` denotes something being moved/loaded from memory.
+`<-` denotes something being moved/loaded from memory.
 
 `:=` denotes a definition
 
@@ -130,10 +130,10 @@ be able to be known at compile time.
 
 Individual bytes can be set or manipulated via the `@` operator:
 
-    ab <= AB (allocates (at compile time) 3 bytes in the heap)
-    p@0 <= 0x01 # Sets the first byte to 0x01
-    p@1 <= 0x02 # Sets the second byte to 0x02
-    p@2 <= 0x03 # Sets the third byte to 0x03
+    ab <- AB (allocates (at compile time) 3 bytes in the heap)
+    p@0 <- 0x01 # Sets the first byte to 0x01
+    p@1 <- 0x02 # Sets the second byte to 0x02
+    p@2 <- 0x03 # Sets the third byte to 0x03
 
     # ab.a == 1
     # ab.b == 515
@@ -146,7 +146,7 @@ If a literal, this is checked at compile-time. If not, it must be of type
 such, and when incremented or set some additional math is done to clean it
 up. Example:
 
-    x <= LessThan{sizeof{TwoPacket}}(0)
+    x <- LessThan{sizeof{TwoPacket}}(0)
     x++
 
 would roughly become something like, since it's an increment (or simple
@@ -157,12 +157,12 @@ addition of 2 `LessThan{x}` values):
     CPI  r16, 12
     BRCC after
     SUBI r16, 12
-    after: 
+    after:
 
 however, for an arbitrary set
 
-    x <= LessThan{sizeof{TwoPacket}}(0)
-    x <= UDR0
+    x <- LessThan{sizeof{TwoPacket}}(0)
+    x <- UDR0
 
 would become something like:
 
@@ -185,7 +185,7 @@ usage of the budget from the compiler as well.
 
     @budget cycles 6
     def hello():
-      x <= LessThan{sizeof{TwoPacket}}(0)
+      x <- LessThan{sizeof{TwoPacket}}(0)
       x++
       return x
 
@@ -193,8 +193,8 @@ will pass (using the entire budget (right now it's naïve and will count `BRCC` 
 
     @budget cycles 5
     def hello():
-      x <= LessThan{sizeof{TwoPacket}}(0)
-      x <= UDR0
+      x <- LessThan{sizeof{TwoPacket}}(0)
+      x <- UDR0
       return x
 
 will fail as it could require up to 129 cycles (if UDR0 was, say, 255)
@@ -205,7 +205,7 @@ Transactions are code where interrupts are turned off.
 
     def hello():
       transaction:
-        x <= LessThan{sizeof{TwoPacket}}(0)
+        x <- LessThan{sizeof{TwoPacket}}(0)
         return x
 
 would give something like
@@ -302,8 +302,8 @@ Using the example above, we can look at how matching works.  Matches need to be
 exhusive; the following will error:
 
     loop:
-      input <= read_input()
-      current_state <= transition(current_state, input)
+      input <- read_input()
+      current_state <- transition(current_state, input)
 
       match current_state:
         case States.Opening_Started:
@@ -326,8 +326,8 @@ exhusive; the following will error:
 However, we can add a default match:
 
     loop:
-      input <= read_input()
-      current_state <= transition(current_state, input)
+      input <- read_input()
+      current_state <- transition(current_state, input)
 
       match current_state:
         case States.Opening_Started:
@@ -364,10 +364,10 @@ Some initial thoughts can be seen in sample-002.
 for function parameters. Slice is explicetly calling out that this parameter
 is an array, but not an array that you declared? I'm working on it.
 
-The syntax for a Slice parameter can include that multiple items being 
+The syntax for a Slice parameter can include that multiple items being
 extracted from the Slice being passed in; one of the extracted parameters
 may be prefixed with an @ symbol, symbolizing where the the rest of the
-slice being passed in, that is the elements not being extracted. 
+slice being passed in, that is the elements not being extracted.
 For example: `[1,2,3,4]` passed into:
 
     [x,@rest]         => x=1, rest=[2,3,4]
@@ -414,7 +414,7 @@ however, this will:
 
 Some example usage:
 
-    # So, what we're doing here for bubble short, is to take an array, extracted 
+    # So, what we're doing here for bubble short, is to take an array, extracted
     # the last element, partially sort the whole array, including the extracted
     # element. We then do this again, without the extracted element. If we
     # have no elements in the rest of the slice, then we terminate.
@@ -444,12 +444,12 @@ Some example usage:
     def void double{T := Addable, A := Slice<size_a>{T}, B := Slice<size_b>{T}; size_b >= size_a}(A a, mut B b):
       match a, b:
         [x, @xs], [y, @ys]:
-          y <= x + x
+          y <- x + x
           double(xs, ys)
         [], [y, @ys] -> pass
         [], [] -> pass
 
-    # Reduce the array by extracting the first element, adding it to the 
+    # Reduce the array by extracting the first element, adding it to the
     # carry. If there is nothing left to recurse on, we return the
     # carry.
     def T sum{T := Addable, S := Slice{T}}(S array, T carry):
@@ -486,7 +486,7 @@ Traits allow one to define functionality on `record`s, similar to how
 it's done in rust. This is not inhereitence in the normal
 object-oriented way -- there are no parents or base classes; the
 closest description is that traits are similar to interfaces, if
-intefaces can't have a parent. 
+intefaces can't have a parent.
 
 To define a trait, you list the methods it has, and then you can implement
 if for a type.
