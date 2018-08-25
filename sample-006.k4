@@ -1,0 +1,40 @@
+alias Address := byte[2]
+
+struct PingPacket:
+  command := 0x0
+  nibble _
+  Address respond_to
+
+struct PongPacket
+  command := 0x1
+
+struct BlinkPacket
+  command := 0x2
+  nibble led_address
+
+alias Packet := byte[3]
+
+task check_packet:
+  setup:
+      Packet packet
+      is_error <= false
+      has_new_packet <= true;
+  body:
+    loop:
+      if has_new_packet:
+        # `mut` signifies that the match will consume the `packet`
+        # The compiler will attept to figure out exclusive bitmasks
+        # for each of the types based upon their struct definition.
+        #
+        # A compiler error will result if unique bitmasks cannot be
+        # found.
+        #
+        # The variable in ()is the variable that can be used in the
+        # match block of the type matches against, but backed by
+        # the same bits as the original `packet`.
+        match mut packet
+          case PingPacket(p) -> pass
+          case PongPacket(p) -> pass
+          case BlinkPacket(p) -> pass
+          else -> is_error <= true
+        yield
