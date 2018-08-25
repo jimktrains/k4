@@ -1,0 +1,98 @@
+enum NodeValue{T}:
+  Empty        := 0x0
+  Value(T)     := 0x1
+
+# Types have "attributes" accessible via `$`
+# Array has type-attributes `ElementType` and `Range`
+# So, `Array<10>{int8}$Range` is similar to Range{0,9}
+# but only for that type, and if x and y are arrays of that
+# type, x$Range is not the same type as y$Range
+alias Tree<size>{T} := Array<size>{NodeValue{T}}
+
+
+trait BinaryTree for T:
+  enum $SearchResult:
+    Not_Found            := 0x0
+    Found(T$Range) := 0x1
+  enum $InsertResult:
+    Not_Found         := 0x0
+    Already_Present   := 0x1
+    Inserted(T$Range) := 0x2
+
+  right($Range)              -> $SearchResult
+  left($Range)               -> $SearchResult
+  find($ElementType value)   -> $SearchResult
+  insert($ElementType value) -> $InsertResult
+
+impl BinaryTree for Tree:
+  right($Range i) -> $SearchResult:
+    # Is there a better way to represent this to allow the compiler to
+    # reason about it and the run-time of the algorithm?
+    new_index <- (i * 2) + 1
+    return match new_index:
+      $Range -> return $SearchResult.Found(clamp{$Range}(new_index)
+      else -> return $SearchResult.Not_Found
+
+  left($Range) -> $SearchResult
+    new_index <- (i * 2) + 2
+    return match new_index:
+      $Range(i) -> return $SearchResult.Found(i)
+      else -> return $SearchResult.Not_Found
+
+  find_internal($SearchResult i, $ElementType val) -> $SearchResult:
+    return match i:
+      $SearchResult.Not_Found -> return $SearchResult.Not_Found
+      $SearchResult.Found(x):
+        return match self[x]:
+          $ElementType.Empty -> return $SearchResult.Found(x)
+          $ElementType.Value(_):
+            if t == val  -> return $SearchResult.Found(x)
+            elif t < val -> return find(right(x, node), val)
+            elif t > val -> return find(left(x, node), val)
+
+  find($ElementType value) -> $SearchResult
+    return match tree_find_internal(0, value):
+      $SearchResult.Not_Found -> return $SearchResult.Not_Found
+      $SearchResult.Found(x):
+        return match self[x]:
+          $ElementType.Empty -> return $SearchResult.Not_Found
+          $ElementType.Value(_) -> return $SearchResult.Found(x)
+
+  insert($ElementType value) -> $InsertResult:
+    possible_position <- find_internal(value)
+    return match possible_position:
+      $SearchResult.Not_Found -> return $InsertResult.Not_Found
+      $SearchResult.Found(i):
+        match self[i]:
+          $ElementType.Value(_) -> return $Inserted.Already_Present
+          $ElementType.Empty:
+            self[i] <- value
+            return $InsertResult.Inserted(i)
+
+# 15 = 4 deep tree
+# Auto-initialized to 0, Similar to RAII
+Tree<15>{int8} tree
+
+# tree$InsertResult.Inserted(0)
+_ <- tree.insert(10) 
+
+# tree$InsertResult.Inserted(1)
+_ <- tree.insert(5) 
+
+# tree$InsertResult.Inserted(2)
+_ <- tree.insert(20) 
+
+# tree$InsertResult.Inserted(6)
+_ <- tree.insert(30) 
+
+# tree$InsertResult.Inserted(4)
+_ <- tree.insert(7) 
+
+# tree$InsertResult.Already_Present
+_ <- tree.insert(10) 
+
+# tree$SearchResult.Found(6)
+_ <- tree.find(30)
+
+# tree$SearchResult.Not_Found
+_ <- tree.find(15)

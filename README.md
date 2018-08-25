@@ -24,9 +24,13 @@ what a good register assignment/storage method would be and how to do this
 effectively or what needs to be present syntactically to help if it's difficult
 to do automatically.)
 
+`:` denotes a block of code is to follow (something indented)
+
 `match`es will be exhaustive.
 
 `<-` denotes something being moved/loaded from memory.
+
+`->` can replace a `:` to place a single statement in-line
 
 `:=` denotes a definition
 
@@ -520,3 +524,100 @@ To constrain traits on a function parameter, use `;`:
 
 notice how the constraints are defined before the parameter list, not
 inside.
+
+## Variant/Sum Types
+
+    enum NodeValue{T}:
+      Empty        := 0x0
+      Value(T)     := 0x1
+
+    record Node{T}:
+      # & indicates a reference
+      &NodeValue{T} value
+      int8 id
+
+    enum NodeResult{T}:
+      OK(Node{T})  := 0x0
+      Doesnt_Exist := 0x1
+
+    enum InsertResult{T}:
+      OK(Node{T})  := 0x0
+      Alread_Exist := 0x1
+      Doesnt_Exist := 0x2
+
+    alias Tree<size>{T} := Array<size>{NodeValue{T}}
+
+    # 15 = 4 deep tree
+    Tree<15>{int8} tree
+
+    @template T
+    @template R := Tree<size>{T}
+    # God help me, I'm templating inside a template
+    # the `contains` operator works because all allocation
+    # is done at compile time, so at creation of a value this can be
+    # checked, and the type system can just assume it's true from then
+    # on out.
+    #
+    # this referes to the variable that's being represented by this type
+    @template N{a} := Node{T}; {a} contains this.value
+    # So, yes, we're just going to test against enum values and assign
+    # this to be the value it would be, because why not? Do I need to 
+    # also say that the other enum values are allowed?
+    @template NR{a} := NodeResult{T};OK(a contains this.value)
+    def tree_left(R tree, N{tree} node) -> NR{tree}:
+      return match tree:
+        [@b[2*(node.id+1) - 1], x, @rest] -> return x
+        else -> return NodeResult{T}.Doesnt_Exist
+
+    @template T
+    @template R := Tree<size>{T}
+    @template N{a} := Node{T}; {a} contains this.value
+    @template NR{a} := NodeResult{T};OK(a contains this.value)
+    def tree_right{R := Tree<size>{T}, N := Node{T}}(R tree, N{tree} node) -> NR{tree}:
+      return match tree:
+        [@b[2*(node.id+1)], x, @rest] -> return NodeResult{T}.OK(x)
+        else -> return NodeResult{T}.Doesnt_Exist
+
+    @template T
+    @template R := Tree<size>{T}
+    @template NR{a} := NodeResult{T};OK(a contains this.value)
+    def tree_head(R tree) -> NR{tree}:
+      return match tree:
+        # <<- assigns a reference
+        [x, @rest] -> return Node { id <- 0, value <<- x }
+        else -> return NodeResult{T}.Doesnt_Exist
+
+    @template T
+    @template R := Tree<size>{T}
+    @template N{a} := Node{T}; a contains this.value
+    @template NR{a} := NodeResult{T};OK(a contains this.value)
+    def tree_find(R tree, T val) -> NR{tree}:
+      @template T
+      @template R := Tree<size>{T}
+      @template NR{a} := NodeResult{T};OK(a contains this.value)
+      def tree_find_internal(R tree, NR{tree} node_result, T val) -> NR{tree}:
+        return match node_result:
+          OK(node):
+            return match node:
+              empty -> return node
+              T(t):
+                if t == val  -> return node
+                elif t < val -> return tree_find(tree, tree_right(tree, node), val)
+                elif t > val -> return tree_find(tree, tree_left(tree, node), val)
+          else -> return node_result
+      return tree_find_internal(tree, tree_head(tree), val)
+
+    @template T
+    @template R := Tree<size>{T}
+    @template N{a} := Node{T}; a contains this.value
+    @template NR{a} := InsertResult{T};OK(a contains this.value)
+    def tree_insert(R tree, T val) -> NR{tree}:
+      pos <- tree_find(tree, val)
+      return match pos:
+        Doesnt_Exist: return InsertResult{T}.Doesnt_Exist
+        OK(node):
+          match node.value:
+            T(x) -> return InsertResult{T}.Alread_Exist
+            empty:
+              node.value <- val
+              return InsertResult{T}.OK(node)

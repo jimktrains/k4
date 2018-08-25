@@ -1,0 +1,82 @@
+struct Node{S(i), T}:
+  enum $ChildNode:
+    Empty := 0x0
+    Node<i>(Node{T}) := 0x1
+
+  enum $Value:
+    Empty := 0x0
+    Value(T) := 0x1
+
+   enum $SearchResult:
+    NotFound := 0x0
+    Found(T) := 0x1
+
+struct Node{S(i), T}:
+  $ChildNode left
+  $ChildNode right
+
+  $Value value
+
+struct Node{0, T}:
+  left  := $ChildNode.Empty
+  right := $ChildNode.Empty
+
+  $Value value
+
+trait BinaryTree for Node<i>{T}:
+  find_internal($ChildNode pnode, T value) -> $SearchResult
+
+
+# A
+impl BinaryTree for Node{T}:
+  find_internal($ChildNode.Empty, T value) := $SearchResult.NotFound
+
+  find_internal($ChildNode.Node($Value.Empty), T value) := $SearchResult.NotFound
+
+  find_internal($ChildNode.Node($Value.Value(x)), T value) -> $SearchResult:
+      return match x <=> value:
+                        Eq -> return $SearchResult.Found(x)
+                        Lt -> return find_internal(node.left, value)
+                         Gt -> return find_internal(node.right, value)
+
+# B
+impl BinaryTree for Node{T}:
+  find_internal($ChildNode pnode, T value) -> $SearchResult:
+      return match pnode:
+          $ChildNode.Empty -> return $SearchResult.NotFound
+          $ChildNode.Node(node):
+              match node.value:
+                 $Value.Empty -> $SearchResult.NotFound
+                $Value.Value(x):
+                    match x <=> value:
+                        Eq -> return $SearchResult.Found(x)
+                        Lt -> return find_internal(node.left, value)
+                        Gt -> return find_internal(node.right, value)
+
+# A
+def bubble_sort(mut []) := _
+def bubble_sort(mut [@rest, x]):
+    bubble_partial_sort([rest, x])
+    bubble_sort(rest)
+
+def bubble_partial_sort(mut [@rest, x, y]):
+    if x > y -> swap x y
+    bubble_partial_sort([rest,x])
+def bubble_partial_sort(mut [x]) := _
+def bubble_partial_sort(mut []) := _
+
+# B
+def bubble_sort(mut Slice array):
+  match array:
+    [@rest, x]:
+      bubble_partial_sort([rest, x])
+      bubble_sort(rest)
+    [] -> pass
+
+def bubble_partial_sort(mut Slice array):
+  match array:
+    [@rest, x, y]:
+      if x > y -> swap x y
+      bubble_partial_sort([rest,x])
+    [@rest, x] -> pass
+    [] -> pass
