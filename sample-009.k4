@@ -1,0 +1,291 @@
+# Functions/types can be parameterized over other types or the Natural
+# numbers (Nat). Nat is "special" in that they can only be directly referenced
+# in a match, and even then only via Z and _ (the anonymous value).
+# The only "arithmetic" that can be done on these numbers is S(n) (sucessor)
+# function (e.g. + 1)) and P(n) (predecessor function (e.g. - 1)).
+
+# Accepts a mutable reference (&) to an array of size n into array
+# and parameterize the function over n
+func bubble_sort{Nat n}(T[n]& array):
+    match array:
+      case [] -> pass
+      # in this syntax, the first value in the array is assigned to x.
+      # we know a first value exists, because the array is not empty
+      # as per the case above. The @ on rest means "stick the rest of the
+      # array into the variable rest. rest has size P(n). rest may have
+      # size Z.
+      case [x, @rest]:
+        # in this construction syntax, only contigous parts of memory can
+        # be joined. x and rest are adjacent as per the case statment.
+        bubble_partial_sort([x, rest])
+        bubble_sort(rest)
+
+func bubble_partial_sort{Nat n}(T[n]& array):
+    match array:
+      # | is the conjunctive syntax in a case statment. Here, if we
+      # get an array that is length 0 or 1, we don't do anything because
+      # there is nothing to sort.
+      case [] | [_] -> pass
+      # Here, the first and second (which exist as per the case above).
+      # rest is of size P(P(n)) and may be Z.
+      case [x, y, @rest]:
+        match x <=> y:
+          case LT -> swap x y
+          case _  -> pass
+        # Even though x and y were swapped, that was their values, x and y
+        # more represent references to memory and this list construction /
+        # deconstruction syntax is only valid for contiguous memory. This
+        # has size S(P(P(N))) = P(n)
+        bubble_partial_sort([y, rest])
+
+##################################
+# Recursion proof
+##################################
+
+# Step 1: Remove static information (swap is a language construct, not a
+#         function call)
+∀n : bubble_sort{n}:
+    match:
+       Z : []
+      ∃n : []
+      ∃n : [bubble_partial_sort{n}, bubble_sort{P(n)}]
+
+∀n : bubble_partial_sort{n}:
+    match:
+       Z : []
+      ∃n : [] 
+      ∃n : bubble_partial_sort{P(n)}
+
+# Step 2: Reduce
+∀n : bubble_sort{n} -> [Z:[], ∃n : [], ∃n : [bubble_partial_sort{n}, bubble_sort{P(n)}]]
+∀n : bubble_partial_sort{n} -> [Z:[], ∃n : [], ∃n : [bubble_partial_sort{P(n)}]]
+
+# Step 3: Apply ∀n : P(n) -> Z
+∀n : bubble_sort{n} -> [Z:[], ∃n : [], ∃n : [bubble_partial_sort{n}, bubble_sort{Z}]]
+∀n : bubble_partial_sort{n} -> [Z:[], ∃n : [], ∃n : [bubble_partial_sort{Z)}]]
+
+# Step 4: Apply definitions
+∀n : bubble_sort{n} -> [Z:[], ∃n : [], ∃n : [bubble_partial_sort{n}, []]]
+∀n : bubble_partial_sort{n} -> [Z:[], ∃n : [], ∃n : [[]]]
+
+# Step 5: Reduce
+∀n : bubble_sort{n} -> [Z:[], ∃n : [], ∃n : [bubble_partial_sort{n}, []]]
+∀n : bubble_partial_sort{n} -> []
+
+# Step 6: Apply definitions (Step 4 again)
+∀n : bubble_sort{n} -> [Z:[], ∃n : [], ∃n : [[], []]]
+∀n : bubble_partial_sort{n} -> []
+
+# Step 7: Reduce
+∀n : bubble_sort{n} -> []
+∀n : bubble_partial_sort{n} -> []
+
+# Step 8: Accept/Deny based on if there are any unbounded recursion: Pass
+
+###################################
+# Stack Depth
+###################################
+
+# Step 1: Remove static information (swap is a language construct, not a
+#         function call). Note the addition of the TCE (Tail-Call 
+#         Elimination) wrapper function. Tail-Call Elimination is mandatory
+#         for a recursive call.
+∀n : bubble_sort{n}:
+    match:
+       Z : 1
+      ∃n : 1
+      ∃n : bubble_partial_sort{n} + TCE(bubble_sort{P(n)})
+
+∀n : bubble_partial_sort{n}:
+    match:
+       Z : 1
+      ∃n : 1 
+      ∃n : TCE(bubble_partial_sort{P(n)})
+
+# Step 2: Reduce
+∀n : |bubble_sort{n}| := (Z:1, ∃n:1, ∃n:bubble_partial_sort{n}+TCE(bubble_sort{P(n)}))
+∀n : |bubble_partial_sort{n}| := [Z:1, ∃n:1, ∃n:TCE(bubble_partial_sort{P(n)})]
+
+# Step 3: Apply ∀n : TCE(f) -> 1 // TCE only uses a single stack frame
+∀n : |bubble_sort{n}| := (Z:1, ∃n:1, ∃n:bubble_partial_sort{n}+1)
+∀n : |bubble_partial_sort{n}| := (Z:1, ∃n:1, ∃n:1)
+
+# Step 4: Apply ∀n : f -> max |f|
+∀n : |bubble_sort{n}| := (Z:1, ∃n:1, ∃n:1+1)
+∀n : |bubble_partial_sort{n}| := 1
+
+# Step 5: Apply ∀n : f -> max |f|
+∀n : |bubble_sort{n}| := 2
+∀n : |bubble_partial_sort{n}| := 1
+
+##########################
+# max expression count
+##########################
+
+# Step 2: Reduce
+∀n : bubble_sort{n} := match{int} + bubble_partial_sort{n} + bubble_sort{P(n)} + 2*call
+∀n : bubble_partial_sort{n} := match{int} + match{int} + swap{T} + compare{T} + bubble_partial_sort{P(n)} + call
+
+# Step 3: For any function with a recursive call, create a prime function
+#         without the recursive call and replace the recursive call with the
+#         prime function in the original defintiion
+∀n : bubble_sort{n} := match{int} + bubble_partial_sort{n} + bubble_sort'{P(n)} + 2*call
+∀n : bubble_partial_sort{n} := 2*match{int} + swap{T} + compare{T} + bubble_partial_sort'{P(n)} + call
+
+∀n : bubble_sort'{n} := match{int} + bubble_partial_sort{n} + call
+∀n : bubble_partial_sort'{n} := 2*match{int} + swap{T} + compare{T}
+
+# Step 4: Apply ∀n : f(n) -> n * f'(n) + n*call
+∀n : bubble_sort{n} := match{int} + bubble_partial_sort{n} + bubble_sort'{P(n)} + 2*call
+∀n : bubble_partial_sort{n} := 2*match{int} + swap{T} + compare{T} + call + P(n) * (2*match{int} + swap{T} + compare{T}) + P(n)*call
+
+∀n : bubble_sort'{n} := match{int} + bubble_partial_sort{n} + call
+∀n : bubble_partial_sort'{n} := 2*match{int} + swap{T} + compare{T}
+
+# Step 5: Reduce
+∀n : bubble_sort{n} := match{int} + bubble_partial_sort{n} + bubble_sort'{P(n)}
+∀n : bubble_partial_sort{n} := n * (2*match{int} + swap{T} + compare{T} + call)
+
+∀n : bubble_sort'{n} := match{int} + bubble_partial_sort{n} + call
+∀n : bubble_partial_sort'{n} := 2*match{int} + swap{T} + compare{T}
+
+# Step 6: Reduce
+∀n : bubble_sort{n} := match{int} + (n * (2*match{int} + swap{T} + compare{T} + call)) + bubble_sort'{P(n)} + call
+∀n : bubble_partial_sort{n} := n * (2*match{int} + swap{T} + compare{T} + call)
+
+∀n : bubble_sort'{n} := match{int} + n * (2*match{int} + swap{T} + compare{T}) + call
+∀n : bubble_partial_sort'{n} := 2*match{int} + swap{T} + compare{T}
+
+# Step 7: Apply ∀n : f(n) -> n * f'(n)
+∀n : bubble_sort{n} := match{int} + (n * (2*match{int} + swap{T} + compare{T})) + P(n) * (n * (2*match{int} + swap{T} + compare{T} + call)) +  P(n)*call + call
+∀n : bubble_partial_sort{n} := n * (2*match{int} + swap{T} + compare{T})
+
+∀n : bubble_sort'{n} := match{int} + n * (2*match{int} + swap{T} + compare{T})
+∀n : bubble_partial_sort'{n} := 2*match{int} + swap{T} + compare{T}
+
+# Step 8: Reduce
+∀n : bubble_sort{n} := match{int} + n * (n * (2*match{int} + swap{T} + compare{T} + call) + call)
+                       match{int} + n**2 * (2*match{int} + swap{T} + compare{T} + call) + n*call
+                       match{int} + 2*n**2 * match{int} + n**2*swap{T} + n**2+compare{T} + n**2*call + n*call
+                       (2*n**2 + 1) * match{int} + n**2*swap{T} + n**2+compare{T} + (n**2+n)*call
+∀n : bubble_partial_sort{n} := n * (match{int} + match{int} + swap{T} + compare{T})
+
+∀n : bubble_sort'{n} := match{int} + n * (match{int} + match{int} + swap{T} + compare{T}) + call
+∀n : bubble_partial_sort'{n} := match{int} + match{int} + swap{T} + compare{T}
+
+#################################
+#################################
+
+func a(i) -> i + 1
+func b(i) -> i + a(i)
+func c(i) -> a(b(i))
+func e(i) -> i + 2
+func d(i):
+  match i <=> 10:
+    case LT -> c(i) + b(a(i))
+    case  _ -> e(i)
+
+####
+# Recursion Test
+####
+
+∀n : a(i) -> ()
+∀n : b(i) -> (∃n : (a))
+∀n : c(i) -> (∃n : (a,b))
+∀n : e(i) -> ()
+∀n : d(i) -> (∃n : (e, (c, b, a)))
+
+∀n : a(i) -> ()
+∀n : b(i) -> ()
+∀n : c(i) -> (∃n : (b))
+∀n : e(i) -> ()
+∀n : d(i) -> (∃n : (c, b))
+
+∀n : a(i) -> ()
+∀n : b(i) -> ()
+∀n : c(i) -> ()
+∀n : e(i) -> ()
+∀n : d(i) -> (∃n : (c))
+
+∀n : a(i) -> ()
+∀n : b(i) -> ()
+∀n : c(i) -> ()
+∀n : e(i) -> ()
+∀n : d(i) -> ()
+
+# Pass
+
+####
+# Stack
+####
+
+∀n : a -> 1
+∀n : b -> 1 + a
+∀n : c -> 1 + max(a,b)
+∀n : e -> 1
+∀n : d -> 1 + max(e, max(c, max(b,a)))
+
+∀n : a -> 1
+∀n : b -> 1 + 1 -> 2
+∀n : c -> 1 + max(a,b)
+∀n : e -> 1
+∀n : d -> 1 + max(1, max(c, max(b,1)))
+
+∀n : a -> 1
+∀n : b -> 2
+∀n : c -> 1 + 2 - > 3
+∀n : e -> 1
+∀n : d -> 1 + max(1, max(c, max(2,1))) -> 1 + max(1, max(c,1))
+
+∀n : a -> 1
+∀n : b -> 2
+∀n : c -> 3
+∀n : e -> 1
+∀n : d -> 1 + max(1, max(3, 1)) -> 1 + max(1,3) -> 1 + 3 -> 4
+
+
+# Max Depth: 4 (Not taking into account any inlining)
+
+##########################
+# max expression count
+##########################
+
+# Reduce
+∀n : a(i) -> add{int}
+∀n : b(i) -> a + add{int} + call
+∀n : c(i) -> a + b + 2*call
+∀n : e(i) -> add{int}
+∀n : d(i) -> match{int} + max(add{int}, c + b + a + 2*add{int}) + 3*call
+
+# Reduce
+∀n : a(i) -> add{int}
+∀n : b(i) -> a + add{int} + call
+∀n : c(i) -> a + b + 2*call
+∀n : e(i) -> add{int}
+∀n : d(i) -> match{int} + max(add{int}, c + b + add{int} + 2*add{int}) + 3*call
+
+
+# Reduce
+∀n : a(i) -> add{int}
+∀n : b(i) -> 2 * add{int} + call
+∀n : c(i) -> add{int} + b + 2*call
+∀n : e(i) -> add{int}
+∀n : d(i) -> match{int} + max(add{int}, c + 2*add{int} + call + 2*add{int}) + 3*call
+             match{int} + max(add{int}, c + 4*add{int} + call) + 3*call
+           
+
+# Reduce
+∀n : a(i) -> add{int}
+∀n : b(i) -> 2 * add{int}
+∀n : c(i) -> 3 * add{int} + 2*call
+∀n : e(i) -> add{int}
+∀n : d(i) -> match{int} + max(add{int}, 3*add{int} + 2*call + 4*add{int} + call) + 3*call
+             match{int} + max(add{int}, 7*add{int} + 3*call) + 3*call
+
+# Reduce
+∀n : a(i) -> add{int}
+∀n : b(i) -> 2 * add{int} + call
+∀n : c(i) -> 3 * add{int} + 2*call
+∀n : e(i) -> add{int}
+∀n : d(i) -> match{int} + 7*add{int} + 3*call + 3*call
+             match{int} + 7*add{int} + 6*call

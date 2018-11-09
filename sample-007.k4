@@ -1,0 +1,150 @@
+# N is natural numbers
+# P is the `predecessor' function
+#   P(n) := n-1
+#   P(1) := Z
+#   P(Z) not defined
+struct TreeNode{N n, type T}:
+  TreeNode{P(n), T} left
+  TreeNode{P(n), T} right
+  Optional{T} node_value
+
+struct TreeNode{Z, T}:
+  Optional{T} node_value
+
+func find{n}(TreeNode{n, T} tree, T value_to_find) -> Boolean:
+  return match tree.node_value:
+    case Empty -> false
+    case Val(v):
+      match (n, v <=> value_to_find): 
+        case (_, EQ) -> true
+        case (Z,  _) -> false
+        case (_, LT) -> find(tree.left, value_to_find)
+        case (_, GT) -> find(tree.right, value_to_find)
+
+# Step 1: Strip all static type and parameter information away, replacing match
+#         cases with existential quantifiers or constants
+∀n: find{n}:
+  return match 
+    case ∃n:Boolean
+    case:
+      match n
+        case ∃n:[]
+        case Z:[]
+        case ∃n:find{P(n)}
+        case ∃n:find{P(n)}
+
+# Step 2: Collapse to produce a set of possible outputs
+∀n : find{n}:
+  return match 
+    case ∃n:[]
+    case: [ ∃n:[], Z:[], ∃n:find{P(n)}]
+
+# Step 3: Step 2, just repeated again
+∀n : find{n}:
+  return [ ∃n:[], Z:[], ∃n:find{P(n)}]
+
+# Step 4: Step 2, just repeated again
+∀n : find{n} -> [ ∃n:[], Z:[], ∃n:find{P(n)}]
+
+# Step 5: Apply basic axioms to further simplify expression.  This is a
+#         basic axiom in the language Whenever we're evaluating
+#         recursion and encounter P(n), we can assume it'll eventually
+#         go to Z.
+∀n:P(n) → Z
+∀n:find{n} -> [ ∃n:[], Z:[], ∃n:find{P(n)}]
+-----------------------------------------------------
+∀n:find{n} -> [ ∃n:[], Z:[], ∃n:find{Z}]
+
+# Step 6: Perform any lookups to satisfy any recursion
+∀n:find{n} -> [ ∃n:[], Z:[], ∃n:[]]
+
+# Step 7: Collapse to create a unique set
+∀n:find{n} -> [ ∃n:[], Z:[]]
+
+# Step 8: Check for exhaustively and collapse again
+∀n:find{n} -> []
+
+# Step 9: Approve / Deny; if the function evaluates to a constant
+#         expression, the recursion is bounded. This is bounded and
+#         therefor permitted.
+
+TreeNode{2, int8} my_tree
+# This would create something like
+# n
+# 2      A
+#      /   \
+# 1   B     C
+#    / \   / \
+# 0 D   E F   G
+#
+# where A-G represent a 8-bit/1-byte integer
+# and in memory it would be stored like this:
+#    BDECFGA
+# sizeof(my_tree) = 7
+# sizeof(my_tree.left) = 3
+# sizeof(my_tree.left.left) = 1
+#
+# (Note the value for the node is at the "end"
+# of the node because it's the last in the
+# definition.
+
+###################
+# Let's perform the example above, but with a typo
+###################
+func bad_find{n}(TreeNode{n, T} tree, T value_to_bad_find) -> Boolean:
+  return match tree.node_value:
+    case Empty -> false
+    case Val(v):
+      match (n, v <=> value_to_bad_find): 
+        case (_, EQ) -> true
+        case (Z,  _) -> false
+        case (_, LT) -> bad_find(tree.left, value_to_bad_find)
+        case (_, GT) -> bad_find(tree, value_to_bad_find)
+
+# Step 1: Strip all static type and parameter information away, replacing match
+#         cases with existential quantifiers or constants
+∀n: bad_find{n}:
+  return match 
+    case ∃n:Boolean
+    case:
+      match n
+        case ∃n:[]
+        case Z:[]
+        case ∃n:bad_find{P(n)}
+        case ∃n:bad_find{n}
+
+# Step 2: Collapse to produce a set of possible outputs
+∀n : bad_find{n}:
+  return match 
+    case ∃n:[]
+    case: [ ∃n:[], Z:[], ∃n:bad_find{P(n)}, ∃n:bad_find{n}]
+
+# Step 3: Step 2, just repeated again
+∀n : bad_find{n}:
+  return [ ∃n:[], Z:[], ∃n:bad_find{P(n)}, ∃n:bad_find{n}]
+
+# Step 4: Step 2, just repeated again
+∀n : bad_find{n} -> [ ∃n:[], Z:[], ∃n:bad_find{P(n)}, ∃n:bad_find{n}]
+
+# Step 5: Apply basic axioms to further simplify expression.  This is a
+#         basic axiom in the language Whenever we're evaluating
+#         recursion and encounter P(n), we can assume it'll eventually
+#         go to Z.
+∀n:P(n) → Z
+∀n:bad_find{n} -> [ ∃n:[], Z:[], ∃n:bad_find{P(n)}, ∃n:bad_find{n}]
+-----------------------------------------------------
+∀n:bad_find{n} -> [ ∃n:[], Z:[], ∃n:bad_find{Z}, ∃n:bad_find{n}]
+
+# Step 6: Perform any lookups to satisfy any recursion
+∀n:bad_find{n} -> [ ∃n:[], Z:[], ∃n:[], ∃n:bad_find{n}]
+
+# Step 7: Collapse to create a unique set
+∀n:bad_find{n} -> [ ∃n:[], Z:[], ∃n:bad_find{n}]
+
+# Step 8: Check for exhaustively and collapse again
+∀n:bad_find{n} -> [∃n:[], Z:[], ∃n:bad_find{n}]
+
+# Step 9: Approve / Deny; if the function evaluates to a constant
+#         expression, the recursion is bounded. This does not collapse
+#         to a constant expression, and is therefore not bounded and
+#         not allowed.

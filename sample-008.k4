@@ -1,0 +1,76 @@
+func a(int i):
+  j = b(i)
+  return i + j
+
+func b(int i):
+  j = a(i)
+  return i + j
+
+# Step 1: Remove static information
+∀n a:
+  b ∪
+  return
+
+∀n b:
+  a ∪
+  return
+
+# Step 2: Condense
+∀n a: [b]
+∀n b: [a]
+
+# Step 3: Apply rules sequentially
+∀n a: [b]
+∀n b: [b]
+
+# Step 4: Verify that no function references itself: Fail
+
+########################
+# Try something else
+########################
+
+func d(int i):
+  return i + 1
+
+func e(int i):
+  return d(i) + 2
+
+func f(int i):
+  return d(i) + e(i)
+
+# Step 1: Remove static information
+∀n : d:
+  return 
+
+∀n : func e:
+  return [d]
+
+∀n : f:
+  return [d, e]
+
+# Step 2: Simplify
+∀n : d: []
+∀n : func e: [d]
+∀n : f: [d, e]
+
+# Step 3: Reduce/Apply
+∀n : d: []
+∀n : func e: [[]]
+∀n : f: [[],e]
+
+# Step 3: Reduce/Apply
+∀n : d: []
+∀n : func e: [[]]
+∀n : f: [[],e]
+
+# Step 3: Reduce/Apply
+∀n : d: []
+∀n : func e: [[]]
+∀n : f: [[],[[]]]
+
+# Step 3: Reduce/Apply
+∀n : d: []
+∀n : func e: []
+∀n : f: []
+
+# Step 4: Verify that no function references itself: Pass
