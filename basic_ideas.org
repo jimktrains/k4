@@ -1,26 +1,29 @@
 * No dynamic allocation - All allocation is done at compile-time
 * Sum Types are the only time the type of something is stored in memory.
   Normal variables are not stored with run-time type information.
- * Built-in Sum Types
-  * Optional
+** Built-in Sum Types
+*** Optional
 * There exists a natural number type `Nat`. `Nat` types may only be used
   as template parameters
- * Values
-  * Z (zero)
- * Function
-  * P (predecessor) (P(N) = n-1, P(1) := Z, P(Z) is not defined)
+** Values
+*** Z (zero)
+** Function
+*** P (predecessor) (P(N) = n-1, P(1) := Z, P(Z) is not defined)
 * Error handling should happen through Sum Types, no exception
   information
 * `match`es
- * Exhaustive, but not exclusive, and match on a first-seen basis
- * May be over a tuple
- * Case of a tuple may contain an "anonymous" value, _ , matching all
+** Exhaustive, but not exclusive, and match on a first-seen basis
+** May be over a tuple
+** Case of a tuple may contain an "anonymous" value, _ , matching all
    values
-* No control structures other than `match`, `yeild` and function calls
+* No control structures other than `match`, `yield` and function calls
 * All types have a static size
 * `Swap` is a built-in, atomic function and performs an in-place swap
 * Comparisons are done via the <=> operator and `match`
- * Values
-  * EQ - Equal
-  * LT - Less Than
-  * GT - Greater Than
+** Values
+*** EQ - Equal
+*** LT - Less Than
+*** GT - Greater Than
+* Linear Type System
+* RAII-style resource managment
+** Especially for periphials

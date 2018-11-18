@@ -1,0 +1,31 @@
+namespace AVL:
+  union LeftRightRoot:
+    Left,
+    Right,
+    Root
+
+  struct TreeNode{Nat n}<T>:
+    Tree{P(n)}<T> left(parent: this)
+    Tree{P(n)}<T> right(parent: this)
+    Optional{ref Tree{S(n)}<T>} parent
+    Optional<T> value
+    LeftRightRoot lrr := Root
+    int balanceFactor
+
+  struct TreeNode{Z n}<T>
+    Optional<T> value
+
+  trait Insertable{NatZ n}<T>:
+    func insert(mut TreeNode{n}<T> node, T value) -> Result<>
+
+  impl Insertable{Nat n}<T> for TreeNode{n}<T>:
+    func insert(mut TreeNode{n}<T> node, T value) -> Result<>:
+      match node.value:
+        case Empty:
+          node.value <- value
+          
+        case Value(v):
+          match value <=> v:
+            case EQ :> Ok()
+            case LT :> insert(node.left, value)
+            case GT :> insert(node.right, value)

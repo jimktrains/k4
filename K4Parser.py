@@ -26,8 +26,13 @@ def K4Parser():
         ''' complex_declaration : record
                               | enum
                               | simple_declaration
+                              | func
         '''
         p[0] = p[1]
+
+    def p_func(p):
+        ''' func : FUNC name COLON statement_list
+        '''
 
     def p_simple_declaration(p):
         ''' simple_declaration : definition
