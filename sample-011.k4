@@ -1,0 +1,64 @@
+alias com.jimkeener.k4.UART@1.0.0 as UART
+alias com.jimkeener.k4.RingBuffer@1.0.0 as RingBuffer
+
+task uart:
+  setup:
+    const int{16} defaultBaudrate := 38400 
+    exportro int{8} uartDroppedBytes <- 0
+
+    staticref int{16} uartBaudrate @ !UBRR
+    staticref int{16} uartFlags @ !UCSRB
+    staticref int{8} uartData @ !UDR
+
+    uartBaudrate <- defaultBaudrate
+    uartFlags    <- UART.Flags.Tx_Enable + UART.Flags.Rx_Enable + UART.Flags.Rx_Complete_Interupt_Enable
+
+    RingBuffer.Reader ReadRingBuffer <- RingBuffer<256>()
+    export ref RingBuffer.Reaer reader <- ReadRingBuffer.reader
+
+    RingBuffer.Reader WriteRingBuffer <- RingBuffer<256>()
+    export ref RingBuffer.Writer writer <- WriteRingBuffer.writer
+  loop:
+    match WriteRingBuffer.read
+      match Value(byte_to_write):
+        uartData <- byte_to_write
+      match Empty:> pass
+  handle USART_RXC:
+    match ReadRingBuffer.writer.write(uartData):
+      case OK:> pass
+      case Full:> uartDroppedBytes += 1
+
+task ReadSensor:
+  setup:
+    exportro int{8} sensorReadingsDropped <- 0
+  loop:
+    match uart.writer.write(SwitchSensor.selectedSensor)
+      case OK:> pass
+      case Full:> sensorReadingsDropped += 1
+
+task SwitchSensor:
+  setup:
+    enum AvailableSensors:
+      # Declares sensorA as a 1-byte/8-bit and at the memory location of the
+      # external symbol PortC. PortC must be filled in from the linker.
+      # This address is fixed and cannot be changed.
+      staticref int{8} sensorA @ !PortC
+
+
+      # Declares sensorB as a 1-byte/8-bit and at the memory location of 0x00AF.
+      # This address is fixed and cannot be changed.
+      staticref int{8} sensorB @ 0x00AF
+
+    exportro AvailableSensors selectedSensor <- AvailableSensors.sensorA
+  loop:
+    match UARTReader.read:
+      case Value(x):
+        match x:
+          match 'A' | 'a':
+            selectedSensor <- AvailableSensors.sensorA
+          match 'B' | 'b':
+            selectedSensor <- AvailableSensors.sensorB
+          match _ :> pass
+      case Empty:> pass
+    
+  

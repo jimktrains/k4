@@ -14,8 +14,7 @@
 * `match`es
 ** Exhaustive, but not exclusive, and match on a first-seen basis
 ** May be over a tuple
-** Case of a tuple may contain an "anonymous" value, _ , matching all
-   values
+** Case of a tuple may contain an "anonymous" value, _ , matching all values
 * No control structures other than `match`, `yield` and function calls
 * All types have a static size
 * `Swap` is a built-in, atomic function and performs an in-place swap
@@ -27,3 +26,7 @@
 * Linear Type System
 * RAII-style resource managment
 ** Especially for periphials
+* Raw Memory can be addressed by setting the address at compile or link time
+** Special, transparent type marker/wraper that forces behavior like `volatile` in C
+** As a LHS, the value will always be copied to the address
+** As a RHS, the value will always be copied from the address
