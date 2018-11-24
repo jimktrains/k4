@@ -5,6 +5,9 @@ YET__**
 
 Experimental/Toy strongly-typed language targeting microcontrollers.
 
+The `sample-xxx.k4` files are just where I'm trying to feel out different
+syntaxes and ways of approaching problems.
+
 # General Thoughts
 
 My main target is the AVR, but there shouldn't be anything that prevents
