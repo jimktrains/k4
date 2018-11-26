@@ -5,8 +5,9 @@ YET__**
 
 Experimental/Toy strongly-typed language targeting microcontrollers.
 
-The `sample-xxx.k4` files are just where I'm trying to feel out different
-syntaxes and ways of approaching problems.
+The `sample-xxx.k4` files are just where I'm trying to feel out
+different syntaxes and ways of approaching problems. They may not be
+indicitive of the final syntax.
 
 Quite literally everything below this line may be contradictory, not
 well thought out, or just plain nonsensical. This opening section
