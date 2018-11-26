@@ -564,18 +564,6 @@ To constrain traits on a function parameter, use `;`:
 notice how the constraints are defined before the parameter list, not
 inside.
 
-## Variant/Sum Types
-
-    enum ThingToDo:
-      Nothing
-      Blink(time, single_duration, LessThan{100} duty_cycle)
-      Beep(int8!kHz frequency, duration)
-
-    match queue.dequeue:
-      Nothing:> pass
-      Blink(times, single_duration, duty_cycle):> pass
-      Beep(frequency, duty_cycle)
-
 ## Physical Unit Types
 
 Arbitrary units can be tacked onto types. Type conversions can be
@@ -600,6 +588,20 @@ produce derived types.
     int8!ft distance2 <- duration
 
 
+## Variant/Sum Types
+
+Fairly standard Sum type and matching.
+
+    enum ThingToDo:
+      Nothing
+      Blink(times, int8!seconds single_duration, LessThan{100}!percent duty_cycle)
+      Beep(int8!kHz frequency, int8!seconds duration)
+
+    match queue.dequeue:
+      Nothing:> pass
+      Blink(times, single_duration, duty_cycle):> pass
+      Beep(frequency, duty_cycle)
+
 ## Dependent Types
 
 Dependent Types are when a type is specified by some value. So below,
@@ -622,7 +624,7 @@ story for a another section.)
       return match tree.node_value:
         case Empty -> false
         case Val(v):
-          match (n, v <=> value_to_find):
+          match (n, v <=> value_to_find): 
             case (_, EQ) -> true
             case (Z,  _) -> false
             case (_, LT) -> find(tree.left, value_to_find)
