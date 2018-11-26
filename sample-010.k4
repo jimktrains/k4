@@ -29,3 +29,5 @@ namespace AVL:
             case EQ :> Ok()
             case LT :> insert(node.left, value)
             case GT :> insert(node.right, value)
+
+            # Todo, figure out how I'm going to keep track of the depths

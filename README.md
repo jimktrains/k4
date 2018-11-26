@@ -534,132 +534,100 @@ intefaces can't have a parent.
 To define a trait, you list the methods it has, and then you can implement
 if for a type.
 
-  record Point:
-    int8 x
-    int8 y
+    record Point:
+      int8 x
+      int8 y
 
-  trait Addable{S,T}:
-    op +(S a, T b)
-    op -(S a, T b)
+    trait Addable{S,T}:
+      op +(S a, T b)
+      op -(S a, T b)
 
-  trait Comparable{T}:
-    op <(T a, T b)
+    trait Comparable{T}:
+      op <(T a, T b)
 
-  impl Addable{S := Point, T := Point}:
-    op +(S a, T b):
-      return Point {x <- a.x + b.x, y <- a.y + b.y}
-    op -(S a, T b):
-      return Point {x <- a.x - b.x, y <- a.y - b.y}
+    impl Addable{S := Point, T := Point}:
+      op +(S a, T b):
+        return Point {x <- a.x + b.x, y <- a.y + b.y}
+      op -(S a, T b):
+        return Point {x <- a.x - b.x, y <- a.y - b.y}
 
-  # This isn't the best way to compare points...but it's a way?
-  impl Comparable{Point}:
-    op <(Point a, Point b):
-      return a.x < b.x || a.y < b.y
+    # This isn't the best way to compare points...but it's a way?
+    impl Comparable{Point}:
+      op <(Point a, Point b):
+        return a.x < b.x || a.y < b.y
 
 To constrain traits on a function parameter, use `;`:
 
-  func do_stuff{T := Addable;Comparable}(T a, T b):
-    pass
+    func do_stuff{T := Addable;Comparable}(T a, T b):
+      pass
 
 notice how the constraints are defined before the parameter list, not
 inside.
 
 ## Variant/Sum Types
 
-    enum NodeValue{T}:
-      Empty        := 0x0
-      Value(T)     := 0x1
+    enum ThingToDo:
+      Nothing
+      Blink(time, single_duration, LessThan{100} duty_cycle)
+      Beep(int8!kHz frequency, duration)
 
-    record Node{T}:
-      # & indicates a reference
-      &NodeValue{T} value
-      int8 id
+    match queue.dequeue:
+      Nothing:> pass
+      Blink(times, single_duration, duty_cycle):> pass
+      Beep(frequency, duty_cycle)
 
-    enum NodeResult{T}:
-      OK(Node{T})  := 0x0
-      Doesnt_Exist := 0x1
+## Physical Unit Types
 
-    enum InsertResult{T}:
-      OK(Node{T})  := 0x0
-      Alread_Exist := 0x1
-      Doesnt_Exist := 0x2
+Arbitrary units can be tacked onto types. Type conversions can be
+defined. Only integral conversions are defined by default. (Division
+isn't defined by default. A library should be importated that does
+floating or fixed point math. Such a library should make precisions
+explicit. I'd love to be able to track accuracy in calculations,
+but...that's for another day.) Types may be combined via `*` and `/` to
+produce derived types.
 
-    alias Tree<size>{T} := Array<size>{NodeValue{T}}
+    int8!sec duration <- 10
+    int8!ft/sec speed <- 1
 
-    # 15 = 4 deep tree
-    Tree<15>{int8} tree
+    def report_speed(int8!m/h speed):> pass
 
-    @template T
-    @template R := Tree<size>{T}
-    # God help me, I'm templating inside a template
-    # the `contains` operator works because all allocation
-    # is done at compile time, so at creation of a value this can be
-    # checked, and the type system can just assume it's true from then
-    # on out.
-    #
-    # this referes to the variable that's being represented by this type
-    @template N{a} := Node{T}; {a} contains this.value
-    # So, yes, we're just going to test against enum values and assign
-    # this to be the value it would be, because why not? Do I need to 
-    # also say that the other enum values are allowed?
-    @template NR{a} := NodeResult{T};OK(a contains this.value)
-    def tree_left(R tree, N{tree} node) -> NR{tree}:
-      return match tree:
-        [@b[2*(node.id+1) - 1], x, @rest] -> return x
-        else -> return NodeResult{T}.Doesnt_Exist
+    # compile error
+    report_speed(freq)
 
-    @template T
-    @template R := Tree<size>{T}
-    @template N{a} := Node{T}; {a} contains this.value
-    @template NR{a} := NodeResult{T};OK(a contains this.value)
-    def tree_right{R := Tree<size>{T}, N := Node{T}}(R tree, N{tree} node) -> NR{tree}:
-      return match tree:
-        [@b[2*(node.id+1)], x, @rest] -> return NodeResult{T}.OK(x)
-        else -> return NodeResult{T}.Doesnt_Exist
+    int8!ft distance <- speed * duration
 
-    @template T
-    @template R := Tree<size>{T}
-    @template NR{a} := NodeResult{T};OK(a contains this.value)
-    def tree_head(R tree) -> NR{tree}:
-      return match tree:
-        # <<- assigns a reference
-        [x, @rest] -> return Node { id <- 0, value <<- x }
-        else -> return NodeResult{T}.Doesnt_Exist
+    # compiler error
+    int8!ft distance2 <- duration
 
-    @template T
-    @template R := Tree<size>{T}
-    @template N{a} := Node{T}; a contains this.value
-    @template NR{a} := NodeResult{T};OK(a contains this.value)
-    def tree_find(R tree, T val) -> NR{tree}:
-      @template T
-      @template R := Tree<size>{T}
-      @template NR{a} := NodeResult{T};OK(a contains this.value)
-      def tree_find_internal(R tree, NR{tree} node_result, T val) -> NR{tree}:
-        return match node_result:
-          OK(node):
-            return match node:
-              empty -> return node
-              T(t):
-                if t == val  -> return node
-                elif t < val -> return tree_find(tree, tree_right(tree, node), val)
-                elif t > val -> return tree_find(tree, tree_left(tree, node), val)
-          else -> return node_result
-      return tree_find_internal(tree, tree_head(tree), val)
 
-    @template T
-    @template R := Tree<size>{T}
-    @template N{a} := Node{T}; a contains this.value
-    @template NR{a} := InsertResult{T};OK(a contains this.value)
-    def tree_insert(R tree, T val) -> NR{tree}:
-      pos <- tree_find(tree, val)
-      return match pos:
-        Doesnt_Exist: return InsertResult{T}.Doesnt_Exist
-        OK(node):
-          match node.value:
-            T(x) -> return InsertResult{T}.Alread_Exist
-            empty:
-              node.value <- val
-              return InsertResult{T}.OK(node)
+## Dependent Types
+
+Dependent Types are when a type is specified by some value. So below,
+the `TreeNode` is dependent on the value of `n`. (Note, I'm begining to
+think that the dependt part and the parametric part should be seperated
+syntactially.) By using Peano numbers as the dependent value, recursion
+can be done in a way where it can be proven to end. (It should also be
+done in a way where tail-calls are always done, but that's a different
+story for a another section.)
+
+    struct TreeNode{N n, type T}:
+      TreeNode{P(n), T} left
+      TreeNode{P(n), T} right
+      Optional{T} node_value
+
+    struct TreeNode{Z, T}:
+      Optional{T} node_value
+
+    func find{n}(TreeNode{n, T} tree, T value_to_find) -> Boolean:
+      return match tree.node_value:
+        case Empty -> false
+        case Val(v):
+          match (n, v <=> value_to_find):
+            case (_, EQ) -> true
+            case (Z,  _) -> false
+            case (_, LT) -> find(tree.left, value_to_find)
+            case (_, GT) -> find(tree.right, value_to_find)
+
 
 # Constraints / Logic Programming
 
