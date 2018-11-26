@@ -1,0 +1,493 @@
+<h1 id="k4">k4</h1>
+<p><strong><strong>THIS IS A WORK IN PROGRESS. IT IS STILL BEING PLANNED. NO COMPILER EXISTS YET</strong></strong></p>
+<p>Experimental/Toy strongly-typed language targeting microcontrollers.</p>
+<p>The <code>sample-xxx.k4</code> files are just where I'm trying to feel out different syntaxes and ways of approaching problems.</p>
+<p>Quite literally everything below this line may be contradictory, not well thought out, or just plain nonsensical.</p>
+<h1 id="general-thoughts">General Thoughts</h1>
+<p>My main target is the 8-bit AVR microcontrollers, but there shouldn't be anything that prevents it from being used elsewhere.</p>
+<p>There will be no concept of a &quot;reference&quot; in the C-way. There will be an <code>address</code> type, but it is effectively defined at compiler time and constant, cannot be mutated, and the address cannot be used in an expression as any reference to the variable will immediately dereference. The concept of &quot;taking the address of a variable&quot; is non-existent.</p>
+<p>Everything is statically dispatched. Objects are not tagged in memory with their type.</p>
+<p>Tail Call Optimizations should be done when possible. (I'm still mulling over what a good register assignment/storage method would be and how to do this effectively or what needs to be present syntactically to help if it's difficult to do automatically.)</p>
+<p><code>:</code> denotes a block of code is to follow (something indented)</p>
+<p><code>match</code>es will be exhaustive.</p>
+<p><code>&lt;-</code> denotes something being moved/loaded from memory.</p>
+<p><code>-&gt;</code> can replace a <code>:</code> to place a single statement in-line</p>
+<p><code>:=</code> denotes a definition</p>
+<p><code>{}</code> denotes a type parameter and is something known at compile time and will require a new version of the function</p>
+<p><code>&lt;&gt;</code> denotes a type parameter and is something known at compile time and will not require a new version of the function (but could).</p>
+<p>For instance, <code>{}</code> is used to determine the type of a parameters and variables and <code>&lt;&gt;</code> could be the length of an array or the number of iterations a function requires. Length of an array will need to be <code>{}</code> for allocation, but for a function that is looping over the array, <code>&lt;&gt;</code> will work.</p>
+<p>(I'm not entirly sold on the above concept yet.)</p>
+<h2 id="basic-concepts">Basic Concepts</h2>
+<ul>
+<li>No dynamic allocation - All allocation is done at compile-time</li>
+<li>Sum Types are the only time the type of something is stored in memory. Normal variables are not stored with run-time type information.
+<ul>
+<li>Built-in Sum Types
+<ul>
+<li>Optional</li>
+</ul></li>
+</ul></li>
+<li>There exists a natural number type <code>Nat</code>. <code>Nat</code> types may only be used as template parameters
+<ul>
+<li>Values
+<ul>
+<li>Z (zero)</li>
+</ul></li>
+<li>Function
+<ul>
+<li>P (predecessor) (P(N) = n-1, P(1) := Z, P(Z) is not defined)</li>
+</ul></li>
+</ul></li>
+<li>Error handling should happen through Sum Types, no exception information</li>
+<li><code>match</code>es
+<ul>
+<li>Exhaustive, but not exclusive, and match on a first-seen basis</li>
+<li>May be over a tuple</li>
+<li>Case of a tuple may contain an &quot;anonymous&quot; value, _ , matching all values</li>
+</ul></li>
+<li>No control structures other than <code>match</code>, <code>yield</code> and function calls</li>
+<li>All types have a static size</li>
+<li><code>Swap</code> is a built-in, atomic function and performs an in-place swap</li>
+<li>Comparisons are done via the &lt;=&gt; operator and <code>match</code>
+<ul>
+<li>Values
+<ul>
+<li>EQ - Equal</li>
+<li>LT - Less Than</li>
+<li>GT - Greater Than</li>
+</ul></li>
+</ul></li>
+<li>Linear Type System</li>
+<li>RAII-style resource managment
+<ul>
+<li>Especially for periphials</li>
+</ul></li>
+<li>Raw Memory can be addressed by setting the address at compile or link time
+<ul>
+<li>Special, transparent type marker/wraper that forces behavior like <code>volatile</code> in C</li>
+<li>As a LHS, the value will always be copied to the address</li>
+<li>As a RHS, the value will always be copied from the address</li>
+</ul></li>
+</ul>
+<h2 id="references">References</h2>
+<p>Variables that are the type of a record live a dual existance. They are treated as references by most of the code, e.g. they are not copied byte-by-byte when being passed to a function, but assignment and swapping will work at the byte. For instance,</p>
+<pre><code>record Point:
+  int8 x
+  int8 y
+
+a &lt;- Point { x &lt;- 1, y &lt;- 2 }
+b &lt;- Point { x &lt;- 3, y &lt;- 4 }
+
+# Does not create copies of a or b
+# Modifying a or b in `add` will cause a or b to be changed
+# out here too.
+add(a, b)
+
+# Copies the contents of b into the memory allocated for a
+a &lt;- b
+
+# Does an in-place swap of the contents of a and b
+swap a b</code></pre>
+<h2 id="require"><code>require</code></h2>
+<p>Libraries can be loaded via <code>require</code>. If the target platform has no library, then compilation will fail.</p>
+<p>Things like floating point, USART, I2C, Timers, DAC, PWM, PID/Math Accelerator, &amp;c support will require the library to be imported. For source libraries, only require code/functions will be in the final output.</p>
+<h2 id="types-of-types">Types of Types</h2>
+<p>There are two types of type: heap allocated and simple. Heap allocated types cannot (in general) be represented in registers or on the stack. Heap allocated types are passed-by-reference</p>
+<p>Default, always available types are</p>
+<ul>
+<li>nibble</li>
+<li>byte</li>
+<li>boolean</li>
+<li>int8</li>
+<li>int16</li>
+<li>Array (fixed-size)</li>
+<li>LessThan{value}</li>
+<li>GreaterThan{value}</li>
+</ul>
+<p>Note that floating point types are not always available. Support would require a <code>require floating_point</code> assertion.</p>
+<h3 id="no-dynamic-allocation">No Dynamic Allocation</h3>
+<p>There is no way to dynamically allocate memory. All variables must be of a known size at compile time and the compiler will figure out how to best allocate memory then.</p>
+<h3 id="byte-type-isomorphism">Byte &lt;=&gt; Type Isomorphism</h3>
+<p>All types must map back to some size of bytes at compile time, which will be allocated on the heap if more than 2 bytes.</p>
+<pre><code>byte  = 1 byte
+int8  = 1 byte
+int16 = 2 bytes
+
+Packet := byte[6] = 6 bytes
+
+TwoPacket:
+  Packet a
+  Packet b
+             =  12 bytes # all allocations are sequential
+
+AB:
+  int8  a
+  int16 b
+             = 3 bytes</code></pre>
+<p>As such, the maximum amount of memory needed for any function call should be able to be known at compile time.</p>
+<p>Individual bytes can be set or manipulated via the <code>@</code> operator:</p>
+<pre><code>ab &lt;- AB (allocates (at compile time) 3 bytes in the heap)
+p@0 &lt;- 0x01 # Sets the first byte to 0x01
+p@1 &lt;- 0x02 # Sets the second byte to 0x02
+p@2 &lt;- 0x03 # Sets the third byte to 0x03
+
+# ab.a == 1
+# ab.b == 515</code></pre>
+<h2 id="lessthan-and-greaterthan"><code>LessThan</code> and <code>GreaterThan</code></h2>
+<p>The value on the right of the <code>@</code> <em>must</em> be less than the size of the object. If a literal, this is checked at compile-time. If not, it must be of type <code>LessThan{size}</code> (above, <code>LessThan{3}</code>) which can be a variable declared as such, and when incremented or set some additional math is done to clean it up. Example:</p>
+<pre><code>x &lt;- LessThan{sizeof{TwoPacket}}(0)
+x++</code></pre>
+<p>would roughly become something like, since it's an increment (or simple addition of 2 <code>LessThan{x}</code> values):</p>
+<pre><code>LDI  r16, 0
+INC  r16
+CPI  r16, 12
+BRCC after
+SUBI r16, 12
+after:</code></pre>
+<p>however, for an arbitrary set</p>
+<pre><code>x &lt;- LessThan{sizeof{TwoPacket}}(0)
+x &lt;- UDR0</code></pre>
+<p>would become something like:</p>
+<pre><code>LDI r16, 0
+LDS r16, UDR0
+loop:
+CPI  r16, $0C
+BRCC after
+SUBI r16, $0C
+BRCC loop
+after:</code></pre>
+<h2 id="annotations-and-budgets">Annotations and Budgets</h2>
+<p>A method can be annotated with notes to the compiler to error if a condition isn't met, such as max memory used or max cycles to execute. (Something like a &quot;Language Server&quot; or IDE in general should be able to extract the current usage of the budget from the compiler as well.</p>
+<pre><code>@budget cycles 6
+def hello():
+  x &lt;- LessThan{sizeof{TwoPacket}}(0)
+  x++
+  return x</code></pre>
+<p>will pass (using the entire budget (right now it's naïve and will count <code>BRCC</code> as 2 cycles)), but</p>
+<pre><code>@budget cycles 5
+def hello():
+  x &lt;- LessThan{sizeof{TwoPacket}}(0)
+  x &lt;- UDR0
+  return x</code></pre>
+<p>will fail as it could require up to 129 cycles (if UDR0 was, say, 255)</p>
+<h2 id="transactions">Transactions</h2>
+<p>Transactions are code where interrupts are turned off.</p>
+<pre><code>def hello():
+  transaction:
+    x &lt;- LessThan{sizeof{TwoPacket}}(0)
+    return x</code></pre>
+<p>would give something like</p>
+<pre><code>CLI
+LDI r16, $00
+SEI</code></pre>
+<h2 id="tasks-and-interrupts">Tasks and Interrupts</h2>
+<h3 id="tasks">Tasks</h3>
+<p>Tasks are functions with two parts, <code>setup</code> and <code>body</code>. In <code>setup</code>, all allocations must happen. All <code>setup</code>s for all tasks will be run before any <code>body</code> is executed. The <code>body</code> of each task will be executed in a loop. Execution of <code>body</code> will start at the beginning unless it had <code>yeild</code>ed.</p>
+<h3 id="interuppts">Interuppts</h3>
+<p>Interrupts are similar to tasks, but not executed in a loop, but when they the interrupt happens.</p>
+<h3 id="table-definitions">Table Definitions</h3>
+<p>Sometimes it makes sense to define a function by a table. Imagine if you will a garage door. It opens when you hit the button, closes when you hit the button, and opens when the sensor is triggered and it's closing.</p>
+<pre><code>enum States := nibble:
+  Open             := 0x0
+  Opening          := 0x1
+  Opening_Finished := 0x6
+  Opening_Started  := 0x8
+  Closed           := 0x2
+  Closing          := 0x3
+  Closing_Finished := 0x7
+  Closing_Started  := 0x9
+  Error            := 0x4
+  Stopped          := 0x5
+
+enum Input := nibble:
+  Button              := 0x0
+  Obstical_Sensor     := 0x1
+  Closed_Limit_Switch := 0x2
+  Opened_Limit_Switch := 0x3
+  No_Input            := 0x4
+
+table transition(States state, Input input) =&gt; States:
+  | state            | input               | return           |
+  | ----------       | --------            | ----------       |
+  | Open             | Button              | Closing_Started  |
+  | Open             | Obstical_Sensor     | Open             |
+  | Open             | Closed_Limit_Switch | Error            |
+  | Open             | Opened_Limit_Switch | Error            |
+  | Open             | No_Input            | Open             |
+
+  | Opening          | Button              | Stopped          |
+  | Opening          | Obstical_Sensor     | Opening          |
+  | Opening          | Closed_Limit_Switch | Error            |
+  | Opening          | Opened_Limit_Switch | Opening_Finished |
+  | Opening          | No_Input            | Opening          |
+
+  | Opening_Finished | -                   | Open             |
+
+  | Opening_Started  | -                   | Opening          |
+
+  | Closed           | Button              | Opening_Started  |
+  | Closed           | Obstical_Sensor     | Closed           |
+  | Closed           | Closed_Limit_Switch | Error            |
+  | Closed           | Opened_Limit_Switch | Error            |
+  | Closed           | No_Input            | Closed           |
+
+  | Closing          | Button              | Stopped          |
+  | Closing          | Obstical_Sensor     | Stopped          |
+  | Closing          | Closed_Limit_Switch | Closing_Finished |
+  | Closing          | Opened_Limit_Switch | Error            |
+  | Closing          | No_Input            | Closing          |
+
+  | Closing_Finished | -                   | Closed           |
+
+  | Closing_Started  | -                   | Closing          |
+
+  | Error            | Button              | Opening          |
+  | Error            | -                   | Error            |
+
+  | Stopped          | Button              | Opening          |
+  | Stopped          | Obstical_Sensor     | Stopped          |
+  | Stopped          | No_Input            | Stopped          |
+  | Stopped          | -                   | Error            |</code></pre>
+<h2 id="match">Match</h2>
+<p>Using the example above, we can look at how matching works. Matches need to be exhusive; the following will error:</p>
+<pre><code>loop:
+  input &lt;- read_input()
+  current_state &lt;- transition(current_state, input)
+
+  match current_state:
+    case States.Opening_Started:
+      start_motor_pulling_up()
+      turn_light_on()
+    case States.Opening_Finished:
+      stop_motor()
+      turn_light_off()
+
+    case States.Closing_Started:
+      start_motor_pulling_down()
+      turn_light_on()
+    case States.Closing_Finished:
+      stop_motor()
+      turn_light_off()
+
+    case States.Error:
+      blink_light()</code></pre>
+<p>However, we can add a default match:</p>
+<pre><code>loop:
+  input &lt;- read_input()
+  current_state &lt;- transition(current_state, input)
+
+  match current_state:
+    case States.Opening_Started:
+      start_motor_pulling_up()
+      turn_light_on()
+    case States.Opening_Finished:
+      stop_motor()
+      turn_light_off()
+
+    case States.Closing_Started:
+      start_motor_pulling_down()
+      turn_light_on()
+    case States.Closing_Finished:
+      stop_motor()
+      turn_light_off()
+
+    case States.Error:
+      blink_light()
+
+    else:
+      pass</code></pre>
+<h2 id="macros">Macros</h2>
+<p>I'm still working out exactly how macros should behave and work. I think I'm going to play around with Common Lisp, Rust, and maybe Nim macros. Some initial thoughts can be seen in sample-002.</p>
+<h2 id="pattern-parameter-matching">Pattern Parameter Matching</h2>
+<h3 id="arrayslice">Array/Slice</h3>
+<p><code>Array</code>s are what can be declared as variables. <code>Slice</code>s are what is used for function parameters. Slice is explicetly calling out that this parameter is an array, but not an array that you declared? I'm working on it.</p>
+<p>The syntax for a Slice parameter can include that multiple items being extracted from the Slice being passed in; one of the extracted parameters may be prefixed with an @ symbol, symbolizing where the the rest of the slice being passed in, that is the elements not being extracted. For example: <code>[1,2,3,4]</code> passed into:</p>
+<pre><code>[x,@rest]         =&gt; x=1, rest=[2,3,4]
+[@rest,x]         =&gt; x=4, rest=[1,2,3]
+[x,y,@rest]       =&gt; x=1, y=2, rest=[3,4]
+[x,@rest,y]       =&gt; x=1, y=4, rest=[2,3]
+[w,x,y,z,@rest]   =&gt; w=1, x=2, y=3, z=4, rest=[]
+[w,x,y,z,a,@rest] =&gt; compiler error</code></pre>
+<p>However, you cannot create a new slice from non-adjacent extracts. This is allowed:</p>
+<pre><code>func a(Slice{T} [a,b,@c]):
+  a([a,b])
+  a([b,@c])</code></pre>
+<p>but this is not:</p>
+<pre><code>func a(Slice{T} [a,b,@c]):
+  a([a,@c])</code></pre>
+<p>You'll need to have an array allocated and assigned to.</p>
+<p>This may also be used in a <code>match</code>. However <code>match</code>es need to be exhustive, for instance the following won't compile:</p>
+<pre><code>func a(Slice{T} b):
+  match b:
+    [a,b,@c]:
+      a([a,b])
+      a([b,@c])</code></pre>
+<p>however, this will:</p>
+<pre><code>func a(Slice{T} b):
+  match b:
+    [a,b,@c]:
+      a([a,b])
+      a([b,@c])
+    [a, @c]:
+      a([a])
+      a([@c)
+    [] -&gt; pass</code></pre>
+<p>Some example usage:</p>
+<pre><code># So, what we&#39;re doing here for bubble short, is to take an array, extracted
+# the last element, partially sort the whole array, including the extracted
+# element. We then do this again, without the extracted element. If we
+# have no elements in the rest of the slice, then we terminate.
+def bubble_sort{T := Comparable, S := Slice{T}}(mut S array):
+    match array:
+      [@rest, x]:
+        bubble_partial_sort([rest, x])
+        bubble_sort(rest)
+      [] -&gt; pass
+
+# This function partially sort the passed in slice by extracting the last
+# two elements, swapping them if nessecary. Swap happens in-place, so
+# we can then partially sort the remainer of the slice by passing in
+# the rest prepended to the first extracted value. (Values can only be
+# concatented in the order extracted: rest;y is a compiler error below.
+def bubble_partial_sort{T := Comparable, S := Slice{T}}(mut S array):
+  match array:
+    [@rest, x, y]:
+      if x &gt; y:
+        swap x y
+      bubble_partial_sort([rest,x])
+    [@rest, x] -&gt; pass
+    [] -&gt; pass
+
+# Since slice extracts act like references, assigning to them
+# will change the value in the array.
+def void double{T := Addable, A := Slice&lt;size_a&gt;{T}, B := Slice&lt;size_b&gt;{T}; size_b &gt;= size_a}(A a, mut B b):
+  match a, b:
+    [x, @xs], [y, @ys]:
+      y &lt;- x + x
+      double(xs, ys)
+    [], [y, @ys] -&gt; pass
+    [], [] -&gt; pass
+
+# Reduce the array by extracting the first element, adding it to the
+# carry. If there is nothing left to recurse on, we return the
+# carry.
+def T sum{T := Addable, S := Slice{T}}(S array, T carry):
+  return match array:
+    [x,@xs] -&gt; return sum(xs, carry + x)
+    [] -&gt; return carry</code></pre>
+<p>Since these can be tail-call optimized, the compiler will be able to produce decent code for this without requiring lots of stack space.</p>
+<p>Part of the rationale for this is avoiding a looping construct. I'm just not a fan of loops and find they're easy to get wrong. If you don't use array indecies, you can't have off-by-one errors.</p>
+<h3 id="records">Records</h3>
+<p>A similar thing can be done for records. A record can be followed by an expression that will extract fields (and potentially not all fields) into function-local variables. I'm still debating this one, but I think it's neat.</p>
+<pre><code>record Vector:
+  int8 x
+  int8 y
+
+func add(Vector {x x1, y y1}, Vector {x x2, y y2}) =&gt; Vector:
+  return Vector { x &lt;- x1 + x2, y &lt;- y1 + y2 }</code></pre>
+<h2 id="traits">Traits</h2>
+<p>Traits are a way of defining composable functionality. <code>record</code>s are simple structures in memory and contain no function definitions on them. Traits allow one to define functionality on <code>record</code>s, similar to how it's done in rust. This is not inhereitence in the normal object-oriented way -- there are no parents or base classes; the closest description is that traits are similar to interfaces, if intefaces can't have a parent.</p>
+<p>To define a trait, you list the methods it has, and then you can implement if for a type.</p>
+<p>record Point: int8 x int8 y</p>
+<p>trait Addable{S,T}: op +(S a, T b) op -(S a, T b)</p>
+<p>trait Comparable{T}: op &lt;(T a, T b)</p>
+<p>impl Addable{S := Point, T := Point}: op +(S a, T b): return Point {x &lt;- a.x + b.x, y &lt;- a.y + b.y} op -(S a, T b): return Point {x &lt;- a.x - b.x, y &lt;- a.y - b.y}</p>
+<p># This isn't the best way to compare points...but it's a way? impl Comparable{Point}: op &lt;(Point a, Point b): return a.x &lt; b.x || a.y &lt; b.y</p>
+<p>To constrain traits on a function parameter, use <code>;</code>:</p>
+<p>func do_stuff{T := Addable;Comparable}(T a, T b): pass</p>
+<p>notice how the constraints are defined before the parameter list, not inside.</p>
+<h2 id="variantsum-types">Variant/Sum Types</h2>
+<pre><code>enum NodeValue{T}:
+  Empty        := 0x0
+  Value(T)     := 0x1
+
+record Node{T}:
+  # &amp; indicates a reference
+  &amp;NodeValue{T} value
+  int8 id
+
+enum NodeResult{T}:
+  OK(Node{T})  := 0x0
+  Doesnt_Exist := 0x1
+
+enum InsertResult{T}:
+  OK(Node{T})  := 0x0
+  Alread_Exist := 0x1
+  Doesnt_Exist := 0x2
+
+alias Tree&lt;size&gt;{T} := Array&lt;size&gt;{NodeValue{T}}
+
+# 15 = 4 deep tree
+Tree&lt;15&gt;{int8} tree
+
+@template T
+@template R := Tree&lt;size&gt;{T}
+# God help me, I&#39;m templating inside a template
+# the `contains` operator works because all allocation
+# is done at compile time, so at creation of a value this can be
+# checked, and the type system can just assume it&#39;s true from then
+# on out.
+#
+# this referes to the variable that&#39;s being represented by this type
+@template N{a} := Node{T}; {a} contains this.value
+# So, yes, we&#39;re just going to test against enum values and assign
+# this to be the value it would be, because why not? Do I need to 
+# also say that the other enum values are allowed?
+@template NR{a} := NodeResult{T};OK(a contains this.value)
+def tree_left(R tree, N{tree} node) -&gt; NR{tree}:
+  return match tree:
+    [@b[2*(node.id+1) - 1], x, @rest] -&gt; return x
+    else -&gt; return NodeResult{T}.Doesnt_Exist
+
+@template T
+@template R := Tree&lt;size&gt;{T}
+@template N{a} := Node{T}; {a} contains this.value
+@template NR{a} := NodeResult{T};OK(a contains this.value)
+def tree_right{R := Tree&lt;size&gt;{T}, N := Node{T}}(R tree, N{tree} node) -&gt; NR{tree}:
+  return match tree:
+    [@b[2*(node.id+1)], x, @rest] -&gt; return NodeResult{T}.OK(x)
+    else -&gt; return NodeResult{T}.Doesnt_Exist
+
+@template T
+@template R := Tree&lt;size&gt;{T}
+@template NR{a} := NodeResult{T};OK(a contains this.value)
+def tree_head(R tree) -&gt; NR{tree}:
+  return match tree:
+    # &lt;&lt;- assigns a reference
+    [x, @rest] -&gt; return Node { id &lt;- 0, value &lt;&lt;- x }
+    else -&gt; return NodeResult{T}.Doesnt_Exist
+
+@template T
+@template R := Tree&lt;size&gt;{T}
+@template N{a} := Node{T}; a contains this.value
+@template NR{a} := NodeResult{T};OK(a contains this.value)
+def tree_find(R tree, T val) -&gt; NR{tree}:
+  @template T
+  @template R := Tree&lt;size&gt;{T}
+  @template NR{a} := NodeResult{T};OK(a contains this.value)
+  def tree_find_internal(R tree, NR{tree} node_result, T val) -&gt; NR{tree}:
+    return match node_result:
+      OK(node):
+        return match node:
+          empty -&gt; return node
+          T(t):
+            if t == val  -&gt; return node
+            elif t &lt; val -&gt; return tree_find(tree, tree_right(tree, node), val)
+            elif t &gt; val -&gt; return tree_find(tree, tree_left(tree, node), val)
+      else -&gt; return node_result
+  return tree_find_internal(tree, tree_head(tree), val)
+
+@template T
+@template R := Tree&lt;size&gt;{T}
+@template N{a} := Node{T}; a contains this.value
+@template NR{a} := InsertResult{T};OK(a contains this.value)
+def tree_insert(R tree, T val) -&gt; NR{tree}:
+  pos &lt;- tree_find(tree, val)
+  return match pos:
+    Doesnt_Exist: return InsertResult{T}.Doesnt_Exist
+    OK(node):
+      match node.value:
+        T(x) -&gt; return InsertResult{T}.Alread_Exist
+        empty:
+          node.value &lt;- val
+          return InsertResult{T}.OK(node)</code></pre>

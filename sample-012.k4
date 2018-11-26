@@ -1,0 +1,94 @@
+enum Occupancy:
+  Empty
+  East
+  West
+  # This cannot be assigned, but may be compared against.
+  Occupied := East | West
+
+enum SwitchPosition:
+  Straight
+  Diverted
+
+enum SignalIndication:
+  Clear
+  Approach
+  Stop
+  
+
+Occupancy track1 # T1
+Occupancy track2 # T2
+Occupancy track2 # T3
+Occupancy track2 # T4
+
+SwitchPosition switch1 # W1
+SwitchPosition switch2 # W2
+
+SignalIndication signal1 # S1
+SignalIndication signal2 # S2
+SignalIndication signal3 # S3
+SignalIndication signal4 # S4
+SignalIndication signal5 # S5
+SignalIndication signal6 # S6
+
+#           <S1   T4   >S2
+#           --------------
+#          /              \
+#     >S6 / <S3        >S4 \  <S5
+#  ----------------------------------
+#   T1  W1        T3       W2   T2
+
+# Constraints are applied before assignment to ensure that all
+# constraints involving a term are still valid after application.
+# Constraints are applied before a transaction can be commited, but
+# will not be valid within a transaction.
+#
+# Constraints must be satisified by the inital variable assignments.
+
+#          Name   Formaula
+#                 Formaulas may be a simple boolean expression or
+#                 contain implication via ->. Implication means that the
+#                 forumal that is implied can be used to set the value
+#                 of additional terms, though this may cause a cascade
+#                 of constraint checks. The compiler must ensure that no
+#                 loops will be generated in this process.
+
+# Opposing Switches
+constraint rule Opposing_Track_Switch(W, S) := W = Straight -> S = Stop
+
+constraint OW1S Opposing_Track_Switch(W1, S1)
+constraint OW2S Opposing_Track_Switch(W2, S2)
+constraint OW1D Opposing_Track_Switch(W1, S3)
+constraint OW1D Opposing_Track_Switch(W2, S4)
+
+# Conflicting Movement
+# N.B. A rule containing an implication is equivilent to its
+#      contrapositive. As such, you can always set S = Stop under any
+#      condition, but you may not set, say, S = Approach when also
+#      T = Occupied.
+constraint rule Conflicting_Movement(T, S) := T = Occupied -> S = Stop
+
+constraint CMW1S W1 = Straight & Conflicting_Movement(T3, S6) & Conflicting_Movement(T1, S3)
+constraint CMW2S W2 = Straight & Conflicting_Movement(T3, S5) & Conflicting_Movement(T2, S4)
+
+constraint CMW1D W1 = Diverted & Conflicting_Movement(T4, S6) & Conflicting_Movement(T1, S1) 
+constraint CMW2D W2 = Diverted & Conflicting_Movement(T4, S5) & Conflicting_Movement(T2, S2)
+
+
+######################################
+# Example from somewhere in the code #
+######################################
+
+if track1_east_sensor:
+  # Q: Should this assignment set S6?
+  # Q: If I want S6 to be assigned, what's a not-suprising, but not
+  #    explicit, in that I don't want to have to set the value of S6 here.
+  match track1 <- East:
+    Satisfied:> pass 
+    # `c` is the name of the constraint that failed, and can be matched
+    # against as if it's an enum of all the constraints that have the
+    # variable being assinged to as a term.
+    #
+    # Probably shouldn't pass but instead do something to figure out why
+    # and to get the system back into a consistent state.
+    Conflict(c):> pass 
+                       

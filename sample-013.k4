@@ -1,0 +1,59 @@
+# W                                    E
+#            <S1   T4   >S2
+#            --------------
+#           /              \
+#      >S6 / <S3        >S4 \  <S5
+#   ----------------------------------
+#    T1  W1        T3       W2   T2
+
+
+constraint rules:
+  Signal_For_Track_Direction(Track, Direction, Signal) := True
+
+  Switch_Track(Track_Union, Switch, Position, Track_Other) := True
+
+  Track_Connection(Direction1, Track1, Track2, Direction2) := True -> Track_Connection(Direction2, Track2, Track1, Direction1)
+
+  Track_Occupied(T) := T != Empty
+
+  Switch_Straight(W) := W = 'Straight
+  Switch_Diverted(W) := W = 'Diverted
+
+  Track_Opposing_Switch(W) :=
+        Switch_Track(TU, W, 'Diverted, TD)
+      & Switch_'Straight(W)
+      & Track_Connection(DU, TU, TD, DD)
+      & Signal_For_Track_Direction(TD, DD, S) 
+      -> 
+      S = 'Stop
+
+  Next_Track_Occupied(T) :=
+        Track_Connection(Dt, T, To, Do)
+      & Track_Occupied(To)
+      & Signal_For_Track_Direction(T, Dt, S)
+      ->
+      S = 'Stop
+
+constraints:
+  Signal_For_Track_Direction(T4, 'West, S1)
+  Signal_For_Track_Direction(T4, 'East, S2)
+
+  Signal_For_Track_Direction(T3, 'West, S3)
+  Signal_For_Track_Direction(T3, 'East, S4)
+
+  Signal_For_Track_Direction(T1, 'East, S6)
+
+  Signal_For_Track_Direction(T2, 'West, S5)
+
+  Switch_Track(T1, W1, 'Straight, T3)
+  Switch_Track(T1, W1, 'Diverted, T4)
+
+  Switch_Track(T2, W2, 'Straight, T3)
+  Switch_Track(T2, W2, 'Diverted, T4)
+
+  Track_Connection('West, T3, T1, 'East)
+  Track_Connection('West, T4, T1, 'East)
+
+  Track_Connection('East, T3, T2, 'West)
+  Track_Connection('East, T4, T2, 'West)
+
