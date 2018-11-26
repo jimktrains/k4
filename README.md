@@ -34,12 +34,14 @@ correct software.
 My main target is the 8-bit AVR microcontrollers, but there shouldn't be
 anything that prevents it from being used elsewhere.
 
-There will be no concept of a "reference" in the C-way. There will be an
+There will be no concept of a pointers in the C-way. There will be an
 `address` type, but it is effectively defined at compiler time and
 constant, cannot be mutated, and the address cannot be used in an
 expression as any reference to the variable will immediately
 dereference. The concept of "taking the address of a variable" is
-non-existent.
+non-existent. There will be some sort of C++-style reference, where the
+syntax handles it as a normal value, all without passing "addresses"
+around. It's more akin to move and borrow semantics/syntax in Rust.
 
 Everything is statically dispatched. Objects are not tagged in memory
 with their type.
