@@ -70,7 +70,9 @@ constraints:
   match queue.deque():
     ...
     case Divert_W2:
-      unify W2 <- Diverted
+      match unify W2 <- Diverted:
+        Ok:> pass
+        Conflict(constraint):>pass
     ...
   # So, what happens here? Unification takes place an consequences of 
   # implication will be updated as needed. Yes, I do need to do more
