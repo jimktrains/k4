@@ -95,8 +95,8 @@ byte-by-byte when being passed to a function, but assignment and
 swapping will work at the byte. For instance,
 
     record Point:
-      int8 x
-      int8 y
+      uaint8 x
+      uaint8 y
 
     a <- Point { x <- 1, y <- 2 }
     b <- Point { x <- 3, y <- 4 }
@@ -133,7 +133,7 @@ Default, always available types are
 * nibble
 * byte
 * boolean
-* int8
+* uaint8
 * int16
 * Array (fixed-size)
 * LessThan{value}
@@ -141,6 +141,29 @@ Default, always available types are
 
 Note that floating point types are not always available.  Support would
 require a `require floating_point` assertion.
+
+## Overflow handling
+
+Possibly done (partially) through the type system:
+
+* `unsigned-overflow-allowed-int8` -> `uaint8`
+* `unsigned-overflow-disallowed-int8` -> `udint8`
+* `signed-overflow-allowed-int8` -> `saint8`
+* `signed-overflow-disallowed-int8` -> `sdint8`
+
+The `overflow-allowed` variants will not force a check for overflow
+after the computation. `overflow-disallowed` will for a check, as in the
+following example; note that assignment cannot be done in the match
+clause because the result of the addition is not an integer. I would
+really love to figure out a cleaner syntax for this.
+
+    sdint8 x <- 0
+
+    # Though, really, if you're just passing here, why?
+    match x + 1:
+      Ok(v):> x <- v
+      Overflow(v):> pass
+      Underflow(v):> pass
 
 ### No Dynamic Allocation
 
@@ -154,7 +177,7 @@ All types must map back to some size of bytes at compile time, which will be
 allocated on the heap if more than 2 bytes.
 
     byte  = 1 byte
-    int8  = 1 byte
+    uaint8  = 1 byte
     int16 = 2 bytes
 
     Packet := byte[6] = 6 bytes
@@ -165,7 +188,7 @@ allocated on the heap if more than 2 bytes.
                  =  12 bytes # all allocations are sequential
 
     AB:
-      int8  a
+      uaint8  a
       int16 b
                  = 3 bytes
 
@@ -517,8 +540,8 @@ function-local variables. I'm still debating this one, but I think it's
 neat.
 
     record Vector:
-      int8 x
-      int8 y
+      uaint8 x
+      uaint8 y
 
     func add(Vector {x x1, y y1}, Vector {x x2, y y2}) => Vector:
       return Vector { x <- x1 + x2, y <- y1 + y2 }
@@ -537,8 +560,8 @@ To define a trait, you list the methods it has, and then you can implement
 if for a type.
 
     record Point:
-      int8 x
-      int8 y
+      uaint8 x
+      uaint8 y
 
     trait Addable{S,T}:
       op +(S a, T b)
@@ -576,18 +599,18 @@ explicit. I'd love to be able to track accuracy in calculations,
 but...that's for another day.) Types may be combined via `*` and `/` to
 produce derived types.
 
-    int8!sec duration <- 10
-    int8!ft/sec speed <- 1
+    uaint8!sec duration <- 10
+    uaint8!ft/sec speed <- 1
 
-    def report_speed(int8!m/h speed):> pass
+    def report_speed(uaint8!m/h speed):> pass
 
     # compile error
     report_speed(freq)
 
-    int8!ft distance <- speed * duration
+    uaint8!ft distance <- speed * duration
 
     # compiler error
-    int8!ft distance2 <- duration
+    uaint8!ft distance2 <- duration
 
 
 ## Variant/Sum Types
@@ -596,8 +619,8 @@ Fairly standard Sum type and matching.
 
     enum ThingToDo:
       Nothing
-      Blink(times, int8!seconds single_duration, LessThan{100}!percent duty_cycle)
-      Beep(int8!kHz frequency, int8!seconds duration)
+      Blink(times, uaint8!seconds single_duration, LessThan{100}!percent duty_cycle)
+      Beep(uaint8!kHz frequency, uaint8!seconds duration)
 
     match queue.dequeue:
       Nothing:> pass
@@ -702,4 +725,21 @@ assignment.)
 
       Track_Connection('East, T3, T2, 'West)
       Track_Connection('East, T4, T2, 'West)
+
+So, this is what I'm having trouble with. Since in the above a signal is
+part of the consequence, and I'd like it to be able to have it set when
+appropriate.
+
+    match mutate consequence T3 <- Easbound:
+      Ok:>pass
+      Conflict(rule):> pass
+
+Opens up some other questions to, like for a value in the constraints is
+update, should it require special syntax to signify that a lot more is
+about to happen than assignment? or to specify that I want a check only
+and no updates?
+
+    match verify T3 <- Eastbound:
+      Ok:> pass
+      Conflict(rule):> pass
 
