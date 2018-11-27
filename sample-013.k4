@@ -7,6 +7,7 @@
 #    T1  W1        T3       W2   T2
 
 
+# I'm probably going to have to add type annotations in here.
 constraint rules:
   Signal_For_Track_Direction(Track, Direction, Signal) := True
 
@@ -14,14 +15,11 @@ constraint rules:
 
   Track_Connection(Direction1, Track1, Track2, Direction2) := True -> Track_Connection(Direction2, Track2, Track1, Direction1)
 
-  Track_Occupied(T) := T != Empty
-
-  Switch_Straight(W) := W = 'Straight
-  Switch_Diverted(W) := W = 'Diverted
+  Track_Occupied(T) := T != 'Empty
 
   Track_Opposing_Switch(W) :=
-        Switch_Track(TU, W, 'Diverted, TD)
-      & Switch_'Straight(W)
+        Switch_Track(TU, W, P, TD)
+      & W != P
       & Track_Connection(DU, TU, TD, DD)
       & Signal_For_Track_Direction(TD, DD, S) 
       -> 
@@ -57,3 +55,141 @@ constraints:
   Track_Connection('East, T3, T2, 'West)
   Track_Connection('East, T4, T2, 'West)
 
+# Somehwere in the rest of the code....
+  # No ' because we can't have a free term here, so it will have a clear
+  # definition based on the type of W2. Note that `unify` will perform
+  # constraint evaluations and can potentially set other variables
+  # defined in the same scope as W2 that are defined as consequences of
+  # constraints. Here S4 would be set.
+  #
+  # The `unify` and `verify` keywords can be very expensive to perform,
+  # however any variable that is defined in a constraint must be
+  # assigned to with one of these keywords to call out to the programmer
+  # that this is not a normal assignment and is expensive and may
+  # potentially have side effects, in the case of `unify`.
+  match queue.deque():
+    ...
+    case Divert_W2:
+      unify W2 <- Diverted
+    ...
+  # So, what happens here? Unification takes place an consequences of 
+  # implication will be updated as needed. Yes, I do need to do more
+  # research on unification algorithms!
+  #
+  # So, what'll end up happening at runtime would be a "sped up"
+  # version of the process below. What can be precomputed will be,
+  # especially since (I'd assume) many terms will end up being enums
+  # with just a few values, possible states could be pre-computed.
+  #
+  # First, we find all constraint rules that apply to switches.
+  #
+  #   Switch_Track(Track_Union, Switch, Position, Track_Other) := True
+  #
+  #   Track_Opposing_Switch(W) :=
+  #         Switch_Track(TU, W, P, TD)
+  #       & W != P
+  #       & Track_Connection(DU, TU, TD, DD)
+  #       & Signal_For_Track_Direction(TD, DD, S) 
+  #       -> 
+  #       S = 'Stop
+  #
+  # Second, we find facts that match any rules
+  #
+  #   Switch_Track(T2, W2, 'Straight, T3)
+  #   Switch_Track(T2, W2, 'Diverted, T4)
+  #
+  # Let's replace/match what we can (star where replacement happened)
+  #
+  # *    Track_Opposing_Switch(W2) :=
+  # *          Switch_Track(TU, W2, P, TD)
+  # *        & W2 != P
+  #          & Track_Connection(DU, TU, TD, DD)
+  #          & Signal_For_Track_Direction(TD, DD, S) 
+  #          -> 
+  #          S = 'Stop
+  #
+  # Find any new facts that match any replacements
+  #
+  #   Switch_Track(T2, W2, 'Straight, T3)
+  #   Switch_Track(T2, W2, 'Diverted, T4)
+  #
+  # Now build up a tree of possible replacements and keep doing this.
+  #
+  #      Track_Opposing_Switch(W2) :=
+  # *          Switch_Track(T2, W2, 'Straight, T3)
+  # *        & W2 != 'Straight
+  # *        & Track_Connection(DU, T2, T3, DD)
+  # *        & Signal_For_Track_Direction(T3, DD, S) 
+  #          -> 
+  #          S = 'Stop
+  #
+  # Find new facts (skipping a step of resolving the transitiveness
+  # of Track_Connection('East, T3, T2, 'West) being equivilent to 
+  # Track_Connection('West, T2, T3, 'East)
+  #     
+  #   Track_Connection('West, T2, T3, 'East)
+  #
+  # Apply new information
+  #
+  #      Track_Opposing_Switch(W2) :=
+  #            Switch_Track(T2, W2, 'Straight, T3)
+  #          & W2 != 'Straight
+  # *        & Track_Connection('West, T2, T3, 'East)
+  # *        & Signal_For_Track_Direction(T3, 'East, S) 
+  #          -> 
+  #          S = 'Stop
+  #
+  # New Facts
+  #
+  #   Signal_For_Track_Direction(T3, 'East, S4)
+  #
+  # Apply
+  #
+  #      Track_Opposing_Switch(W2) :=
+  #            Switch_Track(T2, W2, 'Straight, T3)
+  #          & W2 != 'Straight
+  #          & Track_Connection('West, T2, T3, 'East)
+  # *        & Signal_For_Track_Direction(T3, 'East, S4) 
+  #          -> 
+  # *        S4 = 'Stop
+  #
+  # No more free terms, so evaluate.
+  #
+  # If the consequence of implication is a single equality, or ands of
+  # multiple equalities, then they may be evaluated as
+  # (truthiness | assign(variable, value), which can be used via the
+  # `unify` keyword to make that assignment. (Otherwise, only the
+  # truthiness is used.)
+  #
+  #      Track_Opposing_Switch(W2) :=
+  #            True
+  #          & True
+  #          & True
+  #          & True
+  #          -> 
+  #          (False | assign(S4, 'Stop))
+  #
+  # Simplify. and check all possible options.
+  #
+  # This is false.
+  #
+  #      Track_Opposing_Switch(W2) := True -> False
+  #
+  # This is "true" in that there is something that can be assigned to S4
+  # to make the expression truthy.
+  #
+  #      Track_Opposing_Switch(W2) := True -> assign(S4, 'Stop)
+  #
+  # The `assign` is hoisted and executed via the `unify` keyword.
+  #
+  # If a consequence is being assigned, say we set `S4 <- Approach`,
+  # then the assign option is discarded / not generated, but the
+  # expression is still checked. Since W2 := Divereted here, we could
+  # not S4 <- Approach because it would make the whole constraint
+  # evaluate down to True -> False, which is False and would prevent the
+  # assignment. This may be done with a `verify` keyword, as opposed to
+  # `unify`; the difference being `verify` will not do any assignment.
+  #
+  # Now, all of these mutations should happen atomically, so interupts
+  # should be turned off when commiting. Interupts may need to be turned
+  # off potentially during checks as well?
