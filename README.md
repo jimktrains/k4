@@ -743,3 +743,26 @@ and no updates?
       Ok:> pass
       Conflict(rule):> pass
 
+Now, this could be a very slow process, but in general, the compiler
+will attemp to simplify the unification process at compiler time.
+
+`Track_Opposing_Switch` would compile to the following function based on
+a lookup table for the other parameters.
+
+We _could_ hash out all the values of the enum for P and turn this
+into an equality, but....that's a lot of work? maybe later?
+
+So what I mean, the first term is really !(W != P), which is equiv to
+W = P. We could set P in the table to be the opposite state (P') and just
+keep (W = P') -> S = 'Stop (!(W = P') || (S = 'Stop)) but, meh.
+
+    Track_Opposing_Switch(W1) := (W1 = 'Diverted) || ((S1 = 'Stop) || assign(S1, 'Stop))
+    Track_Opposing_Switch(W1) := (W1 = 'Straight) || ((S3 = 'Stop) || assign(S3, 'Stop))
+    Track_Opposing_Switch(W2) := (W2 = 'Diverted) || ((S2 = 'Stop) || assign(S2, 'Stop))
+    Track_Opposing_Switch(W2) := (W2 = 'Straight) || ((S4 = 'Stop) || assign(S4, 'Stop))
+
+In the end, when W1 or W2 is set, it'll be checked against only 2 of
+those constraints, and the whole process of unification is largely
+skipped.
+
+/* vim: set ts=2 tw=72 : */
