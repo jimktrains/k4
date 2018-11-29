@@ -4,13 +4,18 @@ from K4Lexer import K4Lexer
 from K4Parser import K4Parser
 
 test = r"""module testing
-
-constraint rules:
-    test(a) := (a = 'Test) -> (b = 'Red)
-
 facts:
-    test(r)
-    test(1,c,'Things)
+    parent(me, isaac)
+    parent(me, rosalind)
+    parent(anne, isaac)
+    parent(anne, rosalind)
+    female(anne)
+    male(me)
+    male(isaac)
+    female(rosalind)
+    
+constraint rules:
+   daughtersFather(x) := parent(d, x) && female(x) && male(d)
 """
 k4_lex = K4Lexer().clone()
 k4_lex.input(test)
@@ -19,5 +24,5 @@ k4_lex.input(test)
 #print()
 
 k4_parser = K4Parser()
-ast = k4_parser.parse(test)#, debug=1)
+ast = k4_parser.parse(test, debug=1)
 print(ast)

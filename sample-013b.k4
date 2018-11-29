@@ -1,0 +1,89 @@
+# W                                    E
+#            <S1   T4   >S2
+#            --------------
+#           /              \
+#      >S6 / <S3        >S4 \  <S5
+#   ----------------------------------
+#    T1  W1        T3       W2   T2
+
+
+fact templates:
+  Signal_For_Track_Direction(Track T, Direction D, Signal S)
+
+  Switch_Track(Track Tu, Switch S, Switch_Position P, Track To)
+
+  Track_Connection(Direction D1, Track T1, Track T2, Direction D2)
+
+constraint rules:
+
+  Track_Connected(D1, T1, T2, D2) := 
+    Track_Connection(D1, T1, T2, D2);
+    Track_Connection(D2, T2, T1, D1)
+
+  Track_Occupied(T) := T != 'Empty
+
+  Track_Opposing_Switch(W) :=
+        Switch_Track(TU, W, P, TD)
+      && W != P
+      && Track_Connected(DU, TU, TD, DD)
+      && Signal_For_Track_Direction(TD, DD, S) 
+      -> 
+      S = 'Stop
+
+  Next_Track_Occupied(T) :=
+        Track_Connection(Dt, T, To, Do)
+      && (
+           (Switch_Track(T, W, P, To) && W = P)
+        || (!Switch_Track(T, W, P, To))
+      )
+      && Track_Occupied(To)
+      && Signal_For_Track_Direction(T, Dt, S)
+      ->
+      S = 'Stop
+
+constraints:
+  Signal_For_Track_Direction(T4, 'West, S1)
+  Signal_For_Track_Direction(T4, 'East, S2)
+
+  Signal_For_Track_Direction(T3, 'West, S3)
+  Signal_For_Track_Direction(T3, 'East, S4)
+
+  Signal_For_Track_Direction(T1, 'East, S6)
+
+  Signal_For_Track_Direction(T2, 'West, S5)
+
+  Switch_Track(T1, W1, 'Straight, T3)
+  Switch_Track(T1, W1, 'Diverted, T4)
+
+  Switch_Track(T2, W2, 'Straight, T3)
+  Switch_Track(T2, W2, 'Diverted, T4)
+
+  Track_Connection('West, T3, T1, 'East)
+  Track_Connection('West, T4, T1, 'East)
+
+  Track_Connection('East, T3, T2, 'West)
+  Track_Connection('East, T4, T2, 'West)
+
+
+########################################################################  
+# Thinking about pre-computing                                         #
+########################################################################
+
+# Track_Opposing_Switch would compile to the following function based on
+# a lookup table for the other parameters.
+#
+# We _could_ hash out all the values of the enum for P and turn this
+# into an equality, but....that's a lot of work? maybe later?
+#
+# So what I mean, the first term is really !(W != P), which is equiv to
+# W = P. We could set P in the table to be the opposite state (P') and just
+# keep (W = P') -> S = 'Stop (!(W = P') || (S = 'Stop)) but, meh.
+#
+# assign(X, Y) represents the ability to set S to make this true.
+Track_Opposing_Switch(W)(P, S) := (W = P) || ((S = 'Stop) || assign(S, 'Stop))
+ W  || P         | S 
+----++-----------+---
+ W1 || 'Diverted | S1
+ W1 || 'Straight | S3
+ W2 || 'Diverted | S2
+ W2 || 'Straight | S4

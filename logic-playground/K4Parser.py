@@ -10,7 +10,7 @@ def K4Parser():
     start = 'module'
 
     def p_module(p):
-        ''' module : MODULE ID NEWLINE constraint_rules facts
+        ''' module : MODULE ID NEWLINE facts constraint_rules
         '''
         p[0] = Module(p[2], p[4], p[5])
 
@@ -207,6 +207,9 @@ def K4Parser():
 
     def p_error(p):
         if p and p.type == "NEWLINE":
+            parser.errok()
+            return
+        if p and p.type == "DEDENT":
             parser.errok()
             return
         print("Syntax error in input!")

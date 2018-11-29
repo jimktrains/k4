@@ -730,7 +730,7 @@ So, this is what I'm having trouble with. Since in the above a signal is
 part of the consequence, and I'd like it to be able to have it set when
 appropriate.
 
-    match mutate consequence T3 <- Easbound:
+    match unify T3 <- Easbound:
       Ok:>pass
       Conflict(rule):> pass
 
