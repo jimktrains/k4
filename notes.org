@@ -15,9 +15,28 @@
   allowing for safe recursion and array handling; flexible generics,
   useful for code reüse and the representation of physical types; and
   linear types, removing large classes of data races and memory
-  managment errors. Given the limitations of the size of the output and
-  processing power, the compiler will be responsible for applying as
-  much knowlege and simplifications as possible at compile time --
-  defining how that will work will by far be the most difficult part of
-  this project. 
+  managment errors.
+  
+  Given the limitations of the size of the output and processing power,
+  the compiler will be responsible for applying as much knowlege and
+  simplifications as possible at compile time -- defining how that will
+  work will by far be the most difficult part of this project.  I'm
+  expecting a good portion of the language specification to be the
+  mathemetical reasoning that can be applied to the program to simplify
+  the outputed machine code.
+
+* Built-in Types
+* Algebreic Data Types
+** Records
+** Sums
+* Logic Programming
+** Facts
+** Rules
+* Dependent Types
+** Arrays
+** Recursion
+* Generics
+** Invarient Size
+** Dependent Size
+* Linear Types
 
