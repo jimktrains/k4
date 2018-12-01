@@ -47,24 +47,31 @@ Everything is statically dispatched. Objects are not tagged in memory
 with their type.
 
 Tail Call Optimizations should be done when possible. (I'm still mulling
-over what a good register assignment/storage method would be and how to
-do this effectively or what needs to be present syntactically to help if
-it's difficult to do automatically.)
+over what a good register assignment/storage method would be across
+translation units, as to decrease the amount of register pushing and
+popping that needs to be done, and how to do this effectively or what
+needs to be present syntactically to help if it's difficult to do
+automatically.)
+
+My main concern isn't compiler speed. I want to do a lot of work
+up-front to ensure both correctness and that the least amount of work
+needs to be done on the processor.
 
 ## Basic Concepts
 
 * No dynamic allocation - All allocation is done at compile-time
-* Sum Types are the only time the type of something is stored in memory.
-  Normal variables are not stored with run-time type information.
-    -  Built-in Sum Types
-         +  Optional
+* Variables are not stored with run-time type information.
+* Built-in Sum Types
+    -  Optional
+        + None
+        + Some
 * There exists a natural number type `Nat`. `Nat` types may only be used
-  as template parameters
+  as dependent type parameters
     - Values
         + Z (zero)
     - Function
-        + P (predecessor) (P(N) = n-1, P(1) := Z, P(Z) is not defined)
-        + S (successor) (S(N) = n + 1, S(Z) := 1)
+        + P (predecessor) (P(N) := n-1, P(1) := Z, P(Z) is not defined)
+        + S (successor) (S(N) := n + 1, S(Z) := 1)
 * Error handling should happen through Sum Types, no exception
   information
 * `match`es
@@ -296,7 +303,7 @@ Execution of `body` will start at the beginning unless it had `yeild`ed.
 Interrupts are similar to tasks, but not executed in a loop, but when they
 the interrupt happens.
 
-### Table Definitions
+## Table Definitions
 
 Sometimes it makes sense to define a function by a table. Imagine if you will
 a garage door. It opens when you hit the button, closes when you hit the
