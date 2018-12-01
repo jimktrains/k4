@@ -1,13 +1,23 @@
+#+BEGIN_COMMENT
 /* vim: set ts=2 tw=72: */
+#+END_COMMENT
+
 #+TITLE: K4: A Language for Correctness in Small Spaces
 #+OPTIONS: toc:2
 
-# Premise
-Nihil possimus perferendis ipsa explicabo. Placeat nesciunt et
-recusandae adipisci et. Voluptatibus corporis eum et libero. Quidem
-nihil exercitationem assumenda consequuntur ab natus est perferendis.
+* Premise
 
-Dolores laudantium quas et veniam nemo est. Quaerat sed nostrum impedit
-aperiam molestias. Nihil velit aliquam sit delectus et.
-
+  K4 is designed with two goals in mind. The first is a target of an
+  8-bit microcontroller.  The second is to provide the programmer with
+  tools that help build quality software: _e.g._ algebreic data types,
+  _i.e._ record and sum and ~match~; logic programming, via Constraint
+  Handling Rules or some pared down relation of Prolog; dependent types,
+  allowing for safe recursion and array handling; flexible generics,
+  useful for code reüse and the representation of physical types; and
+  linear types, removing large classes of data races and memory
+  managment errors. Given the limitations of the size of the output and
+  processing power, the compiler will be responsible for applying as
+  much knowlege and simplifications as possible at compile time --
+  defining how that will work will by far be the most difficult part of
+  this project. 
 
