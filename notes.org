@@ -5,17 +5,25 @@
 #+TITLE: K4: A Language for Correctness in Small Spaces
 #+OPTIONS: toc:2
 
-* Premise
+K4 is a toy language being built to explore concepts relating to the
+mechanics of writing a compile, while simultaneously being a vehicle and
+excuse to learn more about type and category theory, and also just being
+an excuse to exercise math muscles that yearn to do work.
 
-  K4 is designed with two goals in mind. The first is a target of an
-  8-bit microcontroller.  The second is to provide the programmer with
-  tools that help build quality software: _e.g._ algebreic data types,
-  _i.e._ record and sum and ~match~; logic programming, via Constraint
-  Handling Rules or some pared down relation of Prolog; dependent types,
-  allowing for safe recursion and array handling; flexible generics,
-  useful for code reüse and the representation of physical types; and
-  linear types, removing large classes of data races and memory
-  managment errors.
+* Precepts
+
+  1) Programs should be an expression of a solution, algorithm, or goal,
+     and not an bit-banging explanation of how to acheive it.
+  2) Programs should be assumed to run on memory and power constrained
+     devices.
+
+* Features
+
+  - Algebreic data types, _i.e._ record and sum and ~match~
+  - Logic/Constraint programming
+  - Dependent types
+  - Linear types
+  - Trait-based composition
   
   Given the limitations of the size of the output and processing power,
   the compiler will be responsible for applying as much knowlege and
@@ -24,6 +32,14 @@
   expecting a good portion of the language specification to be the
   mathemetical reasoning that can be applied to the program to simplify
   the outputed machine code.
+
+* Limitations
+
+  - Static, compile-time memory managment
+  - Recursion must be provably finite and happen via tail-calls
+  - Maximum stack depth checked at compile time. (May help be alleviated
+    by cross-function register allocation or heap allocation for
+    functions only appearing once in the call tree.)
 
 * Built-in Types
 * Algebreic Data Types
