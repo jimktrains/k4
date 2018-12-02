@@ -13,7 +13,7 @@ an excuse to exercise math muscles that yearn to do work.
 * Precepts
 
   1) Programs should be an expression of a solution, algorithm, or goal,
-     and not an bit-banging explanation of how to acheive it.
+     and not a bit-banging explanation of how to acheive it.
   2) Programs should be assumed to run on memory and power constrained
      devices.
 
